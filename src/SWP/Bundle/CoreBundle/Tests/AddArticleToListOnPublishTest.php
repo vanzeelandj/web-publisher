@@ -60,7 +60,8 @@ final class AddArticleToListOnPublishTest extends WebTestCase
             ]);
 
         self::assertEquals(200, $client->getResponse()->getStatusCode());
-
+        $contentUpdated = json_decode($client->getResponse()->getContent(), true);
+        sleep(1);
         $this->prepareArticle();
 
         $client->request('GET', $this->router->generate('swp_api_core_list_items', ['id' => 1]));
@@ -69,6 +70,9 @@ final class AddArticleToListOnPublishTest extends WebTestCase
         $content = json_decode($client->getResponse()->getContent(), true);
         self::assertEquals($content['total'], 1);
         self::assertContains('Abstract html test', $client->getResponse()->getContent());
+        $client->request('GET', $this->router->generate('swp_api_content_show_lists', ['id' => 1]));
+        $content = json_decode($client->getResponse()->getContent(), true);
+        self::assertNotEquals($content['updatedAt'], $contentUpdated['updatedAt']);
     }
 
     public function testAddArticleToListOnPublishWhenRouteCriteriaNotMet()

@@ -14,18 +14,24 @@
 
 namespace SWP\Bundle\ContentBundle\Model;
 
+use Doctrine\Common\Collections\Collection;
+use SWP\Component\Bridge\Model\AuthorsAwareInterface;
 use SWP\Component\Common\Model\SoftDeletableInterface;
 use SWP\Component\Common\Model\TimestampableInterface;
 use SWP\Component\Common\Model\TranslatableInterface;
+use SWP\Component\Rule\Model\RuleSubjectInterface;
 use SWP\Component\Storage\Model\PersistableInterface;
 use Symfony\Cmf\Bundle\CoreBundle\PublishWorkflow\PublishableInterface;
 use Symfony\Cmf\Bundle\CoreBundle\PublishWorkflow\PublishTimePeriodInterface;
 
-interface ArticleInterface extends TimestampableInterface, TranslatableInterface, PersistableInterface, SoftDeletableInterface, PublishableInterface, PublishTimePeriodInterface, MetadataAwareInterface
+interface ArticleInterface extends TimestampableInterface, RuleSubjectInterface, TranslatableInterface, PersistableInterface, SoftDeletableInterface, PublishableInterface, PublishTimePeriodInterface, MetadataAwareInterface, MediaAwareArticleInterface, AuthorsAwareInterface
 {
     const STATUS_NEW = 'new';
+
     const STATUS_PUBLISHED = 'published';
+
     const STATUS_UNPUBLISHED = 'unpublished';
+
     const STATUS_CANCELED = 'canceled';
 
     const KEY_FEATURE_MEDIA = 'featuremedia';
@@ -155,12 +161,34 @@ interface ArticleInterface extends TimestampableInterface, TranslatableInterface
     public function setCode(string $code);
 
     /**
-     * @return mixed
+     * @param ArticleSourceReferenceInterface $source
      */
-    public function getSource();
+    public function addSourceReference(ArticleSourceReferenceInterface $source);
 
     /**
-     * @param mixed $source
+     * @param ArticleSourceReferenceInterface $source
      */
-    public function setSource($source);
+    public function removeSourceReference(ArticleSourceReferenceInterface $source);
+
+    /**
+     * @param ArticleSourceReferenceInterface $source
+     *
+     * @return bool
+     */
+    public function hasSourceReference(ArticleSourceReferenceInterface $source): bool;
+
+    /**
+     * @return Collection|ArticleSourceReferenceInterface[]
+     */
+    public function getSources(): Collection;
+
+    /**
+     * @return array|null
+     */
+    public function getExtra(): ?array;
+
+    /**
+     * @param array|null $extra
+     */
+    public function setExtra(?array $extra): void;
 }

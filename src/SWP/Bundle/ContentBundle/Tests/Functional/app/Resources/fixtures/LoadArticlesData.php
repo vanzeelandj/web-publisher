@@ -18,6 +18,7 @@ use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\Common\DataFixtures\OrderedFixtureInterface;
 use Doctrine\Common\Persistence\ObjectManager;
 use Doctrine\Common\DataFixtures\AbstractFixture;
+use SWP\Bundle\ContentBundle\Model\ArticleAuthor;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -114,7 +115,7 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
                 'content' => 'Test news article content',
                 'route' => 'news',
                 'locale' => 'en',
-                'source' => 'aap',
+                'sources' => ['aap'],
             ],
             [
                 'title' => 'Test article',
@@ -172,6 +173,12 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
             $article->setBody($articleData['content']);
             $article->setRoute($routeProvider->getRouteByName($articleData['route']));
             $article->setLocale($articleData['locale']);
+
+            $author = new ArticleAuthor();
+            $author->setRole('Writer');
+            $author->setName('John Doe');
+            $article->addAuthor($author);
+
             if (!isset($articleData['status'])) {
                 $article->setPublishable(true);
                 if (isset($articleData['published_at'])) {
@@ -187,8 +194,10 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
 
             $article->setMetadata($this->articleMetadata());
             $article->setCode(md5($articleData['title']));
-            if (array_key_exists('source', $articleData)) {
-                $article->setSource($articleData['source']);
+            if (array_key_exists('sources', $articleData)) {
+                foreach ($articleData['sources'] as $source) {
+                    $this->container->get('swp.adder.article_source')->add($article, $source);
+                }
             }
             $manager->persist($article);
 

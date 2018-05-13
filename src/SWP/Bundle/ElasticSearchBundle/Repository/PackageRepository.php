@@ -39,7 +39,7 @@ class PackageRepository extends Repository
 
         $boolFilter = new BoolQuery();
 
-        if ($criteria->getTerm() !== null && $criteria->getTerm() !== '') {
+        if (null !== $criteria->getTerm() && '' !== $criteria->getTerm()) {
             $query = new MultiMatch();
             $query->setFields(['headline^2', 'description^1']);
             $query->setQuery($criteria->getTerm());
@@ -48,16 +48,21 @@ class PackageRepository extends Repository
             $boolFilter->addMust(new MatchAll());
         }
 
-        if ($fields->get('organization') !== null && $fields->get('organization') !== '') {
+        if (null !== $fields->get('organization') && '' !== $fields->get('organization')) {
             $boolFilter->addFilter(new Term(['organization.id' => $fields->get('organization')]));
         }
 
-        if ($fields->get('sources') !== null && !empty($fields->get('sources'))) {
+        if (null !== $fields->get('sources') && !empty($fields->get('sources'))) {
             $boolFilter->addFilter(new Query\Terms('sources', $fields->get('sources')));
         }
 
-        if ($fields->get('authors') !== null && !empty($fields->get('authors'))) {
-            $boolFilter->addFilter(new Query\Terms('byline', $fields->get('authors')));
+        if (null !== $fields->get('authors') && !empty($fields->get('authors'))) {
+            $bool = new BoolQuery();
+            $bool->addFilter(new Query\Terms('authors.name', $fields->get('authors')));
+            $nested = new Nested();
+            $nested->setPath('authors');
+            $nested->setQuery($bool);
+            $boolFilter->addMust($nested);
         }
 
         if (null !== $fields->get('publishedAfter') || null !== $fields->get('publishedBefore')) {
@@ -77,7 +82,7 @@ class PackageRepository extends Repository
             $boolFilter->addMust($nested);
         }
 
-        if ($fields->get('statuses') !== null && !empty($fields->get('statuses'))) {
+        if (null !== $fields->get('statuses') && !empty($fields->get('statuses'))) {
             $boolFilter->addFilter(new Query\Terms('status', $fields->get('statuses')));
         }
 

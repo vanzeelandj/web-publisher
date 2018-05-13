@@ -16,10 +16,13 @@ namespace SWP\Bundle\ContentBundle\Model;
 
 use SWP\Component\Storage\Model\PersistableInterface;
 
-interface RouteInterface extends TreeAwareRouteInterface, PersistableInterface
+interface RouteInterface extends TreeAwareRouteInterface, PersistableInterface, ArticlesAwareInterface
 {
     const TYPE_CONTENT = 'content';
+
     const TYPE_COLLECTION = 'collection';
+
+    const TYPE_CUSTOM = 'custom';
 
     /**
      * @return string
@@ -119,6 +122,18 @@ interface RouteInterface extends TreeAwareRouteInterface, PersistableInterface
     public function getName();
 
     /**
+     * @return string
+     */
+    public function getSlug(): ?string;
+
+    /**
+     * Slug is used for static prefix generation.
+     *
+     * @param string|null $slug
+     */
+    public function setSlug(?string $slug): void;
+
+    /**
      * @return int
      */
     public function getCacheTimeInSeconds();
@@ -173,4 +188,14 @@ interface RouteInterface extends TreeAwareRouteInterface, PersistableInterface
      * @return int|null
      */
     public function getRootId();
+
+    /**
+     * @return int
+     */
+    public function getPosition();
+
+    /**
+     * @param int $position
+     */
+    public function setPosition(int $position);
 }

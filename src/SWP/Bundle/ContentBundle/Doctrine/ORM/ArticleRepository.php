@@ -17,13 +17,17 @@ declare(strict_types=1);
 namespace SWP\Bundle\ContentBundle\Doctrine\ORM;
 
 use Doctrine\ORM\QueryBuilder;
-use Doctrine\ORM\Tools\Pagination\Paginator;
+use Elastica\Query;
+use SWP\Bundle\ContentBundle\Model\ArticleSourceReference;
 use SWP\Component\Common\Criteria\Criteria;
 use SWP\Bundle\ContentBundle\Doctrine\ArticleRepositoryInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\StorageBundle\Doctrine\ORM\EntityRepository;
 use SWP\Component\Common\Pagination\PaginationData;
 
+/**
+ * Class ArticleRepository.
+ */
 class ArticleRepository extends EntityRepository implements ArticleRepositoryInterface
 {
     /**
@@ -53,7 +57,10 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
         $qb->andWhere('a.status = :status')
             ->setParameter('status', $criteria->get('status', ArticleInterface::STATUS_PUBLISHED))
             ->leftJoin('a.media', 'm')
-            ->addSelect('m');
+            ->leftJoin('m.renditions', 'r')
+            ->leftJoin('a.sources', 's')
+            ->leftJoin('a.authors', 'au')
+            ->addSelect('m', 's', 'r', 'au');
 
         $this->applyCustomFiltering($qb, $criteria);
 
@@ -66,7 +73,8 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
     public function countByCriteria(Criteria $criteria, $status = ArticleInterface::STATUS_PUBLISHED): int
     {
         $queryBuilder = $this->createQueryBuilder('a')
-            ->select('COUNT(a.id)');
+            ->select('COUNT(a.id)')
+            ->leftJoin('a.authors', 'au');
 
         if (null !== $status) {
             $queryBuilder
@@ -83,22 +91,50 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
     /**
      * {@inheritdoc}
      */
-    public function findArticlesByCriteria(Criteria $criteria, array $sorting = []): array
+    public function getArticlesByCriteria(Criteria $criteria, array $sorting = []): QueryBuilder
     {
-        $queryBuilder = $this->createQueryBuilder('a')
-            ->where('a.status = :status')
-            ->setParameter('status', $criteria->get('status', ArticleInterface::STATUS_PUBLISHED))
-            ->leftJoin('a.media', 'm')
-            ->addSelect('m');
-
+        $queryBuilder = $this->getArticlesByCriteriaIds($criteria);
+        $queryBuilder->addSelect('au');
+        $queryBuilder->leftJoin('a.authors', 'au');
         $this->applyCustomFiltering($queryBuilder, $criteria);
         $this->applyCriteria($queryBuilder, $criteria, 'a');
-        $this->applySorting($queryBuilder, $sorting, 'a');
+        $this->applySorting($queryBuilder, $sorting, 'a', $criteria);
+        $articlesQueryBuilder = clone $queryBuilder;
         $this->applyLimiting($queryBuilder, $criteria);
+        $selectedArticles = $queryBuilder->getQuery()->getScalarResult();
+        if (!is_array($selectedArticles)) {
+            return [];
+        }
 
-        $paginator = new Paginator($queryBuilder->getQuery(), true);
+        $ids = [];
 
-        return $paginator->getIterator()->getArrayCopy();
+        foreach ($selectedArticles as $partialArticle) {
+            $ids[] = $partialArticle['a_id'];
+        }
+        $articlesQueryBuilder->addSelect('a')
+            ->leftJoin('a.media', 'm')
+            ->leftJoin('m.renditions', 'r')
+            ->leftJoin('a.sources', 's')
+            ->addSelect('m', 'r', 's')
+            ->andWhere('a.id IN (:ids)')
+            ->setParameter('ids', $ids);
+
+        return $articlesQueryBuilder;
+    }
+
+    /**
+     * @param Criteria $criteria
+     *
+     * @return QueryBuilder
+     */
+    public function getArticlesByCriteriaIds(Criteria $criteria): QueryBuilder
+    {
+        $queryBuilder = $this->createQueryBuilder('a')
+            ->select('partial a.{id}')
+            ->where('a.status = :status')
+            ->setParameter('status', $criteria->get('status', ArticleInterface::STATUS_PUBLISHED));
+
+        return $queryBuilder;
     }
 
     /**
@@ -107,6 +143,10 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
     public function getPaginatedByCriteria(Criteria $criteria, array $sorting = [], PaginationData $paginationData = null)
     {
         $queryBuilder = $this->getQueryByCriteria($criteria, $sorting, 'a');
+        $queryBuilder
+            ->addSelect('au')
+            ->leftJoin('a.authors', 'au');
+
         $this->applyCustomFiltering($queryBuilder, $criteria);
 
         if (null === $paginationData) {
@@ -124,24 +164,26 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
         throw new \Exception('Not implemented');
     }
 
+    /**
+     * @param QueryBuilder $queryBuilder
+     * @param Criteria     $criteria
+     */
     private function applyCustomFiltering(QueryBuilder $queryBuilder, Criteria $criteria)
     {
-        foreach (['metadata', 'author'] as $name) {
+        foreach (['metadata'] as $name) {
             if (!$criteria->has($name)) {
                 continue;
             }
 
             if (!is_array($criteria->get($name))) {
                 $criteria->remove($name);
+
                 continue;
             }
 
             $orX = $queryBuilder->expr()->orX();
             foreach ($criteria->get($name) as $value) {
                 $valueExpression = $queryBuilder->expr()->literal('%'.$value.'%');
-                if ('author' === $name) {
-                    $valueExpression = $queryBuilder->expr()->literal('%"byline":"'.$value.'"%');
-                }
                 $orX->add($queryBuilder->expr()->like('a.metadata', $valueExpression));
             }
 
@@ -177,6 +219,61 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
 
             $queryBuilder->andWhere($like);
             $criteria->remove('query');
+        }
+
+        if ($criteria->has('exclude_source') && !empty($criteria->get('exclude_source'))) {
+            $articleSourcesQueryBuilder = $this->getEntityManager()
+                ->createQueryBuilder()
+                ->select('excluded_article.id')
+                ->from(ArticleSourceReference::class, 'excluded_asr')
+                ->join('excluded_asr.article', 'excluded_article')
+                ->join('excluded_asr.articleSource', 'excluded_articleSource');
+
+            $orX = $queryBuilder->expr()->orX();
+            foreach ((array) $criteria->get('exclude_source') as $value) {
+                $orX->add($articleSourcesQueryBuilder->expr()->eq('excluded_articleSource.name', $articleSourcesQueryBuilder->expr()->literal($value)));
+            }
+            $articleSourcesQueryBuilder->andWhere($orX);
+            $queryBuilder->andWhere($queryBuilder->expr()->notIn('a.id', $articleSourcesQueryBuilder->getQuery()->getDQL()));
+
+            $criteria->remove('exclude_source');
+        }
+
+        if ($criteria->has('source') && !empty($criteria->get('source'))) {
+            $articleSourcesQueryBuilder = $this->getEntityManager()
+                ->createQueryBuilder()
+                ->select('article.id')
+                ->from(ArticleSourceReference::class, 'asr')
+                ->join('asr.article', 'article')
+                ->join('asr.articleSource', 'articleSource');
+            $orX = $queryBuilder->expr()->orX();
+            foreach ((array) $criteria->get('source') as $value) {
+                $orX->add($articleSourcesQueryBuilder->expr()->eq('articleSource.name', $articleSourcesQueryBuilder->expr()->literal($value)));
+            }
+            $articleSourcesQueryBuilder->andWhere($orX);
+            $queryBuilder->andWhere($queryBuilder->expr()->in('a.id', $articleSourcesQueryBuilder->getQuery()->getDQL()));
+
+            $criteria->remove('source');
+        }
+
+        if ($criteria->has('author') && !empty($criteria->get('author'))) {
+            $orX = $queryBuilder->expr()->orX();
+            foreach ((array) $criteria->get('author') as $value) {
+                $orX->add($queryBuilder->expr()->eq('au.name', $queryBuilder->expr()->literal($value)));
+            }
+
+            $queryBuilder->andWhere($orX);
+            $criteria->remove('author');
+        }
+
+        if ($criteria->has('exclude_author') && !empty($criteria->get('exclude_author'))) {
+            $andX = $queryBuilder->expr()->andX();
+            foreach ((array) $criteria->get('exclude_author') as $value) {
+                $andX->add($queryBuilder->expr()->neq('au.name', $queryBuilder->expr()->literal($value)));
+            }
+
+            $queryBuilder->andWhere($andX);
+            $criteria->remove('author');
         }
     }
 }

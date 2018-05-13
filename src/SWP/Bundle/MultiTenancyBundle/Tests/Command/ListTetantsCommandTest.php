@@ -22,12 +22,14 @@ use SWP\Component\MultiTenancy\Repository\TenantRepositoryInterface;
 use Symfony\Component\Console\Application;
 use Symfony\Component\Console\Tester\CommandTester;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use PHPUnit\Framework\TestCase;
 
-class ListTetantsCommandTest extends \PHPUnit_Framework_TestCase
+class ListTetantsCommandTest extends TestCase
 {
     const ORGANIZATION_CODE = '123456';
 
     private $commandTester;
+
     private $command;
 
     public function setUp()

@@ -16,9 +16,8 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\ContentBundle\Loader;
 
-use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Persistence\ObjectManager;
-use SWP\Bundle\ContentBundle\Doctrine\ArticleRepositoryInterface;
+use SWP\Bundle\ContentBundle\Provider\ArticleProviderInterface;
 use SWP\Component\Common\Criteria\Criteria;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
@@ -26,7 +25,6 @@ use SWP\Bundle\ContentBundle\Provider\RouteProviderInterface;
 use SWP\Component\TemplatesSystem\Gimme\Context\Context;
 use SWP\Component\TemplatesSystem\Gimme\Factory\MetaFactoryInterface;
 use SWP\Component\TemplatesSystem\Gimme\Loader\LoaderInterface;
-use SWP\Component\TemplatesSystem\Gimme\Meta\Meta;
 use SWP\Component\TemplatesSystem\Gimme\Meta\MetaCollection;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -36,9 +34,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class ArticleLoader extends PaginatedLoader implements LoaderInterface
 {
     /**
-     * @var ArticleRepositoryInterface
+     * @var ArticleProviderInterface
      */
-    protected $articleRepository;
+    protected $articleProvider;
 
     /**
      * @var RouteProviderInterface
@@ -68,20 +66,20 @@ class ArticleLoader extends PaginatedLoader implements LoaderInterface
     /**
      * ArticleLoader constructor.
      *
-     * @param ArticleRepositoryInterface $articleRepository
-     * @param RouteProviderInterface     $routeProvider
-     * @param ObjectManager              $dm
-     * @param MetaFactoryInterface       $metaFactory
-     * @param Context                    $context
+     * @param ArticleProviderInterface $articleProvider
+     * @param RouteProviderInterface   $routeProvider
+     * @param ObjectManager            $dm
+     * @param MetaFactoryInterface     $metaFactory
+     * @param Context                  $context
      */
     public function __construct(
-        ArticleRepositoryInterface $articleRepository,
+        ArticleProviderInterface $articleProvider,
         RouteProviderInterface $routeProvider,
         ObjectManager $dm,
         MetaFactoryInterface $metaFactory,
         Context $context
     ) {
-        $this->articleRepository = $articleRepository;
+        $this->articleProvider = $articleProvider;
         $this->routeProvider = $routeProvider;
         $this->dm = $dm;
         $this->metaFactory = $metaFactory;
@@ -89,36 +87,25 @@ class ArticleLoader extends PaginatedLoader implements LoaderInterface
     }
 
     /**
-     * Load meta object by provided type and parameters.
-     *
-     * @MetaLoaderDoc(
-     *     description="Article Loader loads articles from Content Repository",
-     *     parameters={
-     *         contentPath="SINGLE|required content path",
-     *         slug="SINGLE|required content slug",
-     *         pageName="COLLECTiON|name of Page for required articles"
-     *     }
-     * )
-     *
-     * @param string $type         object type
-     * @param array  $parameters   parameters needed to load required object type
-     * @param int    $responseType response type: single meta (LoaderInterface::SINGLE) or collection of metas (LoaderInterface::COLLECTION)
-     *
-     * @return Meta|Meta[]|bool false if meta cannot be loaded, a Meta instance otherwise
-     *
-     * @throws \Exception
+     *  {@inheritdoc}
      */
-    public function load($type, $parameters = [], $responseType = LoaderInterface::SINGLE)
+    public function load($type, $parameters = [], $withoutParameters = [], $responseType = LoaderInterface::SINGLE)
     {
         $criteria = new Criteria();
-        if ($type === 'article' && $responseType === LoaderInterface::SINGLE) {
+        if ('article' === $type && LoaderInterface::SINGLE === $responseType) {
             $article = null;
             if (array_key_exists('article', $parameters) && $parameters['article'] instanceof ArticleInterface) {
                 $this->dm->detach($parameters['article']);
-                $article = $this->articleRepository->findOneBy(['id' => $parameters['article']->getId()]);
+                $criteria->set('id', $parameters['article']->getId());
                 unset($parameters['article']);
             } elseif (array_key_exists('slug', $parameters)) {
-                $article = $this->articleRepository->findOneBySlug($parameters['slug']);
+                $criteria->set('slug', $parameters['slug']);
+            }
+
+            try {
+                $article = $this->articleProvider->getOneByCriteria($criteria);
+            } catch (NotFoundHttpException $e) {
+                return;
             }
 
             try {
@@ -126,7 +113,7 @@ class ArticleLoader extends PaginatedLoader implements LoaderInterface
             } catch (NotFoundHttpException $e) {
                 return;
             }
-        } elseif ($type === 'articles' && $responseType === LoaderInterface::COLLECTION) {
+        } elseif ('articles' === $type && LoaderInterface::COLLECTION === $responseType) {
             $currentPage = $this->context['route'];
             $route = null;
 
@@ -136,13 +123,7 @@ class ArticleLoader extends PaginatedLoader implements LoaderInterface
 
             if (array_key_exists('route', $parameters)) {
                 if (null === $route || ($route instanceof RouteInterface && $route->getId() !== $parameters['route'])) {
-                    if (is_int($parameters['route'])) {
-                        $route = $this->routeProvider->getOneById($parameters['route']);
-                    } elseif (is_string($parameters['route'])) {
-                        $route = $this->routeProvider->getOneByStaticPrefix($parameters['route']);
-                    } elseif (is_array($parameters['route'])) {
-                        $route = $parameters['route'];
-                    }
+                    $route = $this->routeProvider->getByMixed($parameters['route']);
 
                     if (null === $route) {
                         // if Route parameter was passed but it was not found - don't return articles not filtered by route
@@ -151,31 +132,28 @@ class ArticleLoader extends PaginatedLoader implements LoaderInterface
                 }
             }
 
-            if (
-                null !== $route &&
-                (
-                    $route instanceof RouteInterface && RouteInterface::TYPE_COLLECTION === $route->getType() ||
-                    is_array($route)
-                )
-            ) {
+            if (null !== $route && ($route instanceof RouteInterface && RouteInterface::TYPE_COLLECTION === $route->getType() || is_array($route))) {
                 $criteria->set('route', $route);
             }
 
-            if (isset($parameters['metadata'])) {
-                $criteria->set('metadata', $parameters['metadata']);
+            foreach (['metadata', 'keywords', 'source', 'author'] as $item) {
+                if (isset($parameters[$item])) {
+                    $criteria->set($item, $parameters[$item]);
+                }
+
+                if (isset($withoutParameters[$item])) {
+                    $criteria->set('exclude_'.$item, $withoutParameters[$item]);
+                }
             }
 
-            if (isset($parameters['keywords'])) {
-                $criteria->set('keywords', $parameters['keywords']);
-            }
-
-            $criteria = $this->applyPaginationToCriteria($criteria, $parameters);
+            $this->applyPaginationToCriteria($criteria, $parameters);
+            $this->setDateRangeToCriteria($criteria, $parameters);
             $countCriteria = clone $criteria;
-            $articles = $this->articleRepository->findArticlesByCriteria($criteria, $criteria->get('order', []));
-            $articlesCollection = new ArrayCollection($articles);
+            $articlesCollection = $this->articleProvider->getManyByCriteria($criteria, $criteria->get('order', []));
+
             if ($articlesCollection->count() > 0) {
                 $metaCollection = new MetaCollection();
-                $metaCollection->setTotalItemsCount($this->articleRepository->countByCriteria($countCriteria));
+                $metaCollection->setTotalItemsCount($this->articleProvider->getCountByCriteria($countCriteria));
                 foreach ($articlesCollection as $article) {
                     $articleMeta = $this->getArticleMeta($article);
                     if (null !== $articleMeta) {
@@ -192,17 +170,29 @@ class ArticleLoader extends PaginatedLoader implements LoaderInterface
     }
 
     /**
-     * Checks if Loader supports provided type.
-     *
-     * @param string $type
-     *
-     * @return bool
+     * {@inheritdoc}
      */
     public function isSupported(string $type): bool
     {
         return in_array($type, ['articles', 'article']);
     }
 
+    /**
+     * @param Criteria $criteria
+     * @param array    $parameters
+     */
+    private function setDateRangeToCriteria(Criteria $criteria, array $parameters)
+    {
+        if (isset($parameters['date_range']) && is_array($parameters['date_range']) && 2 === count($parameters['date_range'])) {
+            $criteria->set('dateRange', $parameters['date_range']);
+        }
+    }
+
+    /**
+     * @param ArticleInterface|null $article
+     *
+     * @return \SWP\Component\TemplatesSystem\Gimme\Meta\Meta|void
+     */
     private function getArticleMeta($article)
     {
         if (null !== $article) {

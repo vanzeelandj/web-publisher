@@ -3,6 +3,7 @@ fos_elastica:
         default: { host: "%env(ELASTICA_HOST)%", port: "%env(ELASTICA_PORT)%" }
     indexes:
         swp:
+            index_name: '%env(ELASTICA_INDEX_NAME)%'
             settings:
                 analysis:
                     analyzer:
@@ -10,6 +11,13 @@ fos_elastica:
                             type: custom
                             tokenizer: whitespace
                             filter: [lowercase]
+                        swp_author_name_analyzer:
+                            type: custom
+                            tokenizer: standard
+                        swp_sources_analyzer:
+                            type: custom
+                            tokenizer: keyword
+                            filter: [standard]
             types:
                 article:
                     properties:
@@ -20,8 +28,6 @@ fos_elastica:
                         lead: { type: string }
                         slug: { type: string }
                         status: { type: string }
-                        author:
-                            property_path: metadata[byline]
                         located:
                             property_path: metadata[located]
                         version:
@@ -45,12 +51,23 @@ fos_elastica:
                             properties:
                                 name: { type: string }
                                 id: { type: integer }
+                        sources:
+                            type: "nested"
+                            properties:
+                                name: { type: string, analyzer: swp_sources_analyzer }
+                        authors:
+                            type: "nested"
+                            properties:
+                                id: { type: integer }
+                                name: { type: string, analyzer: swp_author_name_analyzer }
                     persistence:
                         driver: orm
                         model: "%swp.model.article.class%"
                         provider: ~
                         finder: ~
                         repository: SWP\Bundle\ElasticSearchBundle\Repository\ArticleRepository
+                        elastica_to_model_transformer:
+                            ignore_missing: true
                 package:
                     properties:
                         id: { type: integer}
@@ -87,9 +104,16 @@ fos_elastica:
                                     properties:
                                         name: { type: string }
                                         id: { type: integer }
+                        authors:
+                            type: "nested"
+                            properties:
+                                id: { type: integer }
+                                name: { type: string, analyzer: swp_author_name_analyzer }
                     persistence:
                         driver: orm
                         model: "%swp.model.package.class%"
                         provider: ~
                         finder: ~
                         repository: SWP\Bundle\ElasticSearchBundle\Repository\PackageRepository
+                        elastica_to_model_transformer:
+                            ignore_missing: true

@@ -1,4 +1,5 @@
 imports:
+    - { resource: "@SWPAnalyticsBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPBridgeBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPContentBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPMultiTenancyBundle/Resources/config/app/config.yml" }
@@ -6,6 +7,7 @@ imports:
     - { resource: "@SWPMenuBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPContentListBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPRevisionBundle/Resources/config/app/config.yml" }
+    - { resource: "@SWPOutputChannelBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPCoreBundle/Resources/config/app/config.yml" }
     - { resource: "@SWPElasticSearchBundle/Resources/config/app/config.yml" }
     - { resource: parameters.yml }
@@ -16,13 +18,10 @@ imports:
 parameters:
     locale: en
     templating.cache_warmer.template_paths.class: "Symfony\\Bundle\\FrameworkBundle\\CacheWarmer\\TemplatePathsCacheWarmer"
-    twig_cache.extension.class: "SWP\\Bundle\\CoreBundle\\Twig\\TwigCacheProfilerExtension"
 
 framework:
     ide: 'phpstorm://open?file=%%f&line=%%l'
     cache:
-        app: cache.adapter.doctrine
-        system: cache.adapter.doctrine
         default_doctrine_provider: doctrine_cache.providers.main_cache
     esi: { enabled: true }
     translator:
@@ -39,7 +38,6 @@ framework:
         engines: ['twig']
     default_locale:  "%locale%"
     trusted_hosts:   ~
-    trusted_proxies: "%trusted_proxies%"
     fragments: { path: /_fragment }
     http_method_override: true
 
@@ -53,7 +51,7 @@ twig:
 
 twig_cache:
     service: "doctrine_cache.providers.main_cache"
-    key_generator: "swp_content_bundle.key_generator.meta_key_generator"
+    key_generator: "swp_core.key_generator.meta_key_generator"
 
 # Doctrine Configuration
 doctrine:
@@ -63,9 +61,9 @@ doctrine:
         port:     '%env(DATABASE_PORT)%'
         dbname:   '%env(DATABASE_NAME)%'
         user:     '%env(DATABASE_USER)%'
-        password: "%env(DATABASE_PASSWORD)%"
+        password: '%env(DATABASE_PASSWORD)%'
         charset:  UTF8
-        server_version: "%server_version%"
+        server_version: '%env(DATABASE_SERVER_VERSION)%'
         mapping_types:
             json: string
 
@@ -81,17 +79,15 @@ doctrine:
                 query_cache_driver:
                     type: service
                     id: doctrine_cache.providers.main_cache
-                mappings:
-                    SWPAnalyticsBundle:
-                        type: yml
-                        prefix: SWP\Bundle\AnalyticsBundle\Model
-                        dir: Resources/config/doctrine
+                result_cache_driver:
+                      type: service
+                      id: doctrine_cache.providers.main_cache
 
 doctrine_cache:
     providers:
         main_cache:
-            type: "%doctrine_cache_driver%"
-            namespace: "%env(SYMFONY_SECRET)%"
+            type: '%doctrine_cache_driver%'
+            namespace: '%env(SYMFONY_SECRET)%'
 
 doctrine_migrations:
     dir_name: "%kernel.root_dir%/migrations"
@@ -110,6 +106,8 @@ swiftmailer:
 fos_http_cache:
     user_context:
         enabled: false
+    tags:
+        enabled: false
     cache_manager:
         enabled: true
         generate_url_type: 0
@@ -117,7 +115,7 @@ fos_http_cache:
         varnish:
             http:
                 servers: "%cache_servers%"
-                base_url: "%domain%"
+                base_url: "%env(SWP_DOMAIN)%"
     invalidation:
         rules:
             -
@@ -229,9 +227,11 @@ fos_rest:
     exception:
         codes:
             "Symfony\\Component\\Routing\\Exception\\ResourceNotFoundException": 404
+            "SWP\\Component\\Common\\Exception\\NotFoundHttpException": 404
             "SWP\\Bundle\\SettingsBundle\\Exception\\InvalidScopeException": 500
         messages:
             "Symfony\\Component\\Routing\\Exception\\ResourceNotFoundException": true
+            "SWP\\Component\\Common\\Exception\\NotFoundHttpException": true
             "SWP\\Bundle\\SettingsBundle\\Exception\\InvalidScopeException": true
 
 swp_core:
@@ -245,17 +245,18 @@ nelmio_cors:
     defaults:
         allow_credentials: false
         allow_origin: ["%allow_origin_cors%"]
-        allow_methods: ["POST", "LINK", "UNLINK", "GET", "DELETE", "OPTIONS", "PATCH"]
-        allow_headers: ["origin", "content-type", "accept", "authorization"]
+        allow_methods: ["POST", "LINK", "UNLINK", "GET", "DELETE", "OPTIONS", "PATCH", "PUT"]
+        allow_headers: ["origin", "content-type", "accept", "authorization", "link"]
         expose_headers: ["link"]
         max_age: 3600
     paths:
         '^/api/': ~
 
 sentry:
-    environment: "%kernel.environment%"
     dsn: "%sentry.dsn%"
-    release: "dev-master"
+    options:
+        environment: "%kernel.environment%"
+        release: "dev-master"
 
 monolog:
     handlers:

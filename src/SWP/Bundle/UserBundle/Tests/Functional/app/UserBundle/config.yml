@@ -13,7 +13,9 @@ framework:
         strict_requirements: ~
     templating:
         engines: ['twig']
-    session: ~
+    session:
+        handler_id: ~
+        storage_id: session.storage.mock_file
     test: ~
     validation:      { enable_annotations: false }
     form: ~
@@ -66,6 +68,9 @@ fos_user:
     from_email:
         address: contact@publisher.dev
         sender_name: Publisher
+    registration:
+        confirmation:
+            enabled: true
 
 swp_settings:
     persistence:

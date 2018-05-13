@@ -20,6 +20,7 @@ use Elastica\Query;
 use Elastica\Query\BoolQuery;
 use Elastica\Query\MatchAll;
 use Elastica\Query\MultiMatch;
+use Elastica\Query\Nested;
 use Elastica\Query\Range;
 use Elastica\Query\Term;
 use FOS\ElasticaBundle\Repository;
@@ -37,7 +38,7 @@ class ArticleRepository extends Repository
         $fields = $criteria->getFilters()->getFields();
         $boolFilter = new BoolQuery();
 
-        if ($criteria->getTerm() !== null && $criteria->getTerm() !== '') {
+        if (null !== $criteria->getTerm() && '' !== $criteria->getTerm()) {
             $query = new MultiMatch();
             $query->setFields(['title^3', 'lead^2', 'body^1']);
             $query->setQuery($criteria->getTerm());
@@ -46,21 +47,29 @@ class ArticleRepository extends Repository
             $boolFilter->addMust(new MatchAll());
         }
 
-        if ($fields->get('authors') !== null && !empty($fields->get('authors'))) {
-            foreach ($fields->get('authors') as $author) {
-                $boolFilter->addFilter(new Query\Match('author', $author));
-            }
+        if (null !== $fields->get('authors') && !empty($fields->get('authors'))) {
+            $bool = new BoolQuery();
+            $bool->addFilter(new Query\Terms('authors.name', $fields->get('authors')));
+            $nested = new Nested();
+            $nested->setPath('authors');
+            $nested->setQuery($bool);
+            $boolFilter->addMust($nested);
         }
 
-        if ($fields->get('sources') !== null && !empty($fields->get('sources'))) {
-            $boolFilter->addFilter(new Query\Terms('sources', $fields->get('sources')));
+        if (null !== $fields->get('sources') && !empty($fields->get('sources'))) {
+            $nested = new Nested();
+            $nested->setPath('sources');
+            $boolQuery = new BoolQuery();
+            $boolQuery->addMust(new Query\Terms('sources.name', $fields->get('sources')));
+            $nested->setQuery($boolQuery);
+            $boolFilter->addMust($nested);
         }
 
-        if ($fields->get('statuses') !== null && !empty($fields->get('statuses'))) {
+        if (null !== $fields->get('statuses') && !empty($fields->get('statuses'))) {
             $boolFilter->addFilter(new Query\Terms('status', $fields->get('statuses')));
         }
 
-        if ($fields->get('metadata') !== null && !empty($fields->get('metadata'))) {
+        if (null !== $fields->get('metadata') && !empty($fields->get('metadata'))) {
             foreach ($fields->get('metadata') as $key => $values) {
                 foreach ((array) $values as $value) {
                     $boolFilter->addFilter(new Query\Match($key, $value));
@@ -81,8 +90,8 @@ class ArticleRepository extends Repository
             $boolFilter->addFilter(new Range(
                 'publishedAt',
                 [
-                    'gte' => $fields->get('publishedAfter'),
-                    'lte' => $fields->get('publishedBefore'),
+                    'gte' => null !== $fields->get('publishedAfter') ? $fields->get('publishedAfter')->format('Y-m-d') : null,
+                    'lte' => null !== $fields->get('publishedBefore') ? $fields->get('publishedBefore')->format('Y-m-d') : null,
                 ]
             ));
 

@@ -6,14 +6,14 @@
         <!-- Content -->
         <section id="content">
 
-            {% set trendingTopic = app.request.get('topic') %}
+            {% set trendingTopic = app.request.get('topic')|toUpperCase %}
             <h2>Topic '{{ trendingTopic }}'</h2>
 
             {# Setup list and pagination parameters #}
             {% set itemsPerPage, currentPage = 8, app.request.get('page', 1) %}
             {% set start = ((currentPage - 1) * itemsPerPage) %}
 
-            {% gimmelist article from articles|order('publishedAt','desc')|start(start)|limit(itemsPerPage) with {keyword: trendingTopic} %}
+            {% gimmelist article from articles|start(start)|limit(itemsPerPage)|order('publishedAt','desc') with {keywords: [trendingTopic]} %}
             {% if loop.first %}
             <div class="row masonry" id="masonry_container" style="position: relative; height: 1076px;">
                 {% endif %}
@@ -33,7 +33,7 @@
                         {% endif %}
 
                         <div class="content content_text">
-                            <h6 class="info">{% if article.metadata.byline %} {{ article.metadata.byline }} - {% endif %} {{ article.publishedAt|date("d.m.Y, H:i") }}</h6>
+                            <h6 class="info">{% if article.authors|length > 0 %} {% for author in article.authors %}{{ author.name }} ({{ author.role }}),{% endfor %} {% else %} {{ article.metadata.byline }} - {% endif %} {{ article.publishedAt|date("d.m.Y, H:i") }}</h6>
                             <h3 class="title"><a href="{{ url(article) }}">{{ article.title }}</a></h3>
                             <p>{{ article.lead|striptags|truncate(200,true) }}</p>
                         </div>

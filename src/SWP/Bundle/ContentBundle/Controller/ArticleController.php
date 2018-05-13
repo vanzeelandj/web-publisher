@@ -17,7 +17,6 @@ namespace SWP\Bundle\ContentBundle\Controller;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Cache;
 use SWP\Component\Common\Criteria\Criteria;
 use SWP\Component\Common\Pagination\PaginationData;
 use SWP\Component\Common\Response\ResourcesListResponse;
@@ -54,8 +53,6 @@ class ArticleController extends Controller
      * @Route("/api/{version}/content/articles/", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_content_list_articles")
      * @Method("GET")
      *
-     * @Cache(expires="10 minutes", public=true)
-     *
      * @param Request $request
      *
      * @return ResourcesListResponse
@@ -87,7 +84,7 @@ class ArticleController extends Controller
                 'publishedAfter' => $request->query->has('publishedAfter') ? new \DateTime($request->query->get('publishedAfter')) : '',
                 'author' => $authors,
                 'query' => $request->query->get('query', ''),
-                'source' => $request->query->get('source', ''),
+                'source' => $request->query->get('source', []),
             ]), $request->query->get('sorting', []), new PaginationData($request));
 
         return new ResourcesListResponse($articles);
@@ -105,8 +102,6 @@ class ArticleController extends Controller
      * )
      * @Route("/api/{version}/content/articles/{id}", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_content_show_articles", requirements={"id"=".+"})
      * @Method("GET")
-     *
-     * @Cache(expires="10 minutes", public=true)
      */
     public function getAction($id)
     {

@@ -21,12 +21,14 @@ use SWP\Bundle\ContentBundle\Doctrine\ArticleRepositoryInterface;
 use SWP\Bundle\ContentBundle\Event\ArticleEvent;
 use SWP\Bundle\ContentBundle\Factory\ArticleFactoryInterface;
 use SWP\Bundle\CoreBundle\Model\ArticleInterface;
+use SWP\Bundle\CoreBundle\Model\ArticleStatisticsInterface;
 use SWP\Bundle\CoreBundle\Model\CompositePublishActionInterface;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\CoreBundle\Model\PublishDestinationInterface;
 use SWP\Bundle\CoreBundle\Model\TenantInterface;
 use SWP\Component\Bridge\Events;
 use SWP\Component\MultiTenancy\Context\TenantContextInterface;
+use SWP\Component\Storage\Factory\FactoryInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 
@@ -48,6 +50,11 @@ final class ArticlePublisher implements ArticlePublisherInterface
     private $articleFactory;
 
     /**
+     * @var FactoryInterface
+     */
+    private $articleStatisticsFactory;
+
+    /**
      * @var TenantContextInterface
      */
     private $tenantContext;
@@ -58,17 +65,15 @@ final class ArticlePublisher implements ArticlePublisherInterface
      * @param ArticleRepositoryInterface $articleRepository
      * @param EventDispatcherInterface   $eventDispatcher
      * @param ArticleFactoryInterface    $articleFactory
+     * @param FactoryInterface           $articleStatisticsFactory
      * @param TenantContextInterface     $tenantContext
      */
-    public function __construct(
-        ArticleRepositoryInterface $articleRepository,
-        EventDispatcherInterface $eventDispatcher,
-        ArticleFactoryInterface $articleFactory,
-        TenantContextInterface $tenantContext
-    ) {
+    public function __construct(ArticleRepositoryInterface $articleRepository, EventDispatcherInterface $eventDispatcher, ArticleFactoryInterface $articleFactory, FactoryInterface $articleStatisticsFactory, TenantContextInterface $tenantContext)
+    {
         $this->articleRepository = $articleRepository;
         $this->eventDispatcher = $eventDispatcher;
         $this->articleFactory = $articleFactory;
+        $this->articleStatisticsFactory = $articleStatisticsFactory;
         $this->tenantContext = $tenantContext;
     }
 
@@ -82,7 +87,7 @@ final class ArticlePublisher implements ArticlePublisherInterface
                 /* @var TenantInterface $tenant */
                 $this->tenantContext->setTenant($tenant);
                 if ($article->getTenantCode() === $tenant->getCode()) {
-                    $this->eventDispatcher->dispatch(ArticleEvents::UNPUBLISH, new ArticleEvent($article));
+                    $this->eventDispatcher->dispatch(ArticleEvents::UNPUBLISH, new ArticleEvent($article, null, ArticleEvents::UNPUBLISH));
                 }
             }
         }
@@ -98,43 +103,55 @@ final class ArticlePublisher implements ArticlePublisherInterface
         /** @var PublishDestinationInterface $destination */
         foreach ($action->getDestinations() as $destination) {
             $this->tenantContext->setTenant($destination->getTenant());
-            /** @var ArticleInterface $article */
-            $article = $this->articleFactory->createFromPackage($package);
-            $this->eventDispatcher->dispatch(Events::SWP_VALIDATION, new GenericEvent($article));
 
-            /** @var ArticleInterface $existingArticle */
-            if (null !== ($existingArticle = $this->findArticleByTenantAndCode(
-                    $destination->getTenant()->getCode(),
-                    $article->getCode())
-                )) {
-                $existingArticle->setRoute($destination->getRoute());
-                $existingArticle->setPublishedFBIA($destination->isFbia());
-                $this->dispatchEvents($existingArticle, $package);
+            /* @var ArticleInterface $existingArticle */
+            if (null !== ($article = $this->findArticleByTenantAndCode($destination->getTenant()->getCode(), $package->getGuid()))) {
+                $article->setRoute($destination->getRoute());
+                $article->setPublishedFBIA($destination->isFbia());
+                $this->eventDispatcher->dispatch(Events::SWP_VALIDATION, new GenericEvent($article));
+                if ($destination->isPublished()) {
+                    $this->eventDispatcher->dispatch(ArticleEvents::PUBLISH, new ArticleEvent($article, null, ArticleEvents::PUBLISH));
+                }
+
+                $this->eventDispatcher->dispatch(ArticleEvents::PRE_CREATE, new ArticleEvent($article, $package, ArticleEvents::PRE_CREATE));
 
                 continue;
             }
 
+            /** @var ArticleInterface $article */
+            $article = $this->articleFactory->createFromPackage($package);
+            /** @var ArticleStatisticsInterface $articleStatistics */
+            $articleStatistics = $this->articleStatisticsFactory->create();
+            $articleStatistics->setArticle($article);
+            $this->articleRepository->persist($articleStatistics);
+            $this->eventDispatcher->dispatch(Events::SWP_VALIDATION, new GenericEvent($article));
             $article->setPackage($package);
             $article->setRoute($destination->getRoute());
             $article->setPublishedFBIA($destination->isFbia());
+            $article->setArticleStatistics($articleStatistics);
             $this->articleRepository->persist($article);
-            $this->dispatchEvents($article, $package);
+
+            if ($destination->isPublished()) {
+                $this->eventDispatcher->dispatch(ArticleEvents::PUBLISH, new ArticleEvent($article, null, ArticleEvents::PUBLISH));
+            }
+
+            $this->eventDispatcher->dispatch(ArticleEvents::PRE_CREATE, new ArticleEvent($article, $package, ArticleEvents::PRE_CREATE));
         }
 
         $this->articleRepository->flush();
     }
 
+    /**
+     * @param string $tenantCode
+     * @param string $code
+     *
+     * @return object
+     */
     private function findArticleByTenantAndCode(string $tenantCode, string $code)
     {
         return $this->articleRepository->findOneBy([
             'tenantCode' => $tenantCode,
             'code' => $code,
         ]);
-    }
-
-    private function dispatchEvents(ArticleInterface $article, PackageInterface $package)
-    {
-        $this->eventDispatcher->dispatch(ArticleEvents::PUBLISH, new ArticleEvent($article));
-        $this->eventDispatcher->dispatch(ArticleEvents::PRE_CREATE, new ArticleEvent($article, $package));
     }
 }

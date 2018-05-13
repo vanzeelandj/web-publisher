@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace SWP\Bundle\CoreBundle\EventListener;
 
 use Doctrine\Common\Persistence\ObjectManager;
+use FOS\ElasticaBundle\Persister\ObjectPersisterInterface;
 use SWP\Bundle\ContentBundle\ArticleEvents;
 use SWP\Bundle\ContentBundle\Doctrine\ArticleRepositoryInterface;
 use SWP\Bundle\ContentBundle\Event\ArticleEvent;
@@ -24,6 +25,7 @@ use SWP\Bundle\ContentBundle\Hydrator\ArticleHydratorInterface;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\MultiTenancyBundle\MultiTenancyEvents;
 use SWP\Component\Bridge\Model\ContentInterface;
+use SWP\Component\Common\Event\HttpCacheEvent;
 use SWP\Component\Common\Exception\UnexpectedTypeException;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
@@ -51,23 +53,31 @@ final class UpdatedPackageListener
     private $eventDispatcher;
 
     /**
+     * @var ObjectPersisterInterface
+     */
+    private $elasticaObjectPersister;
+
+    /**
      * UpdatedPackageListener constructor.
      *
      * @param ArticleHydratorInterface   $articleHydrator
      * @param ObjectManager              $articleManager
      * @param ArticleRepositoryInterface $articleRepository
      * @param EventDispatcherInterface   $eventDispatcher
+     * @param ObjectPersisterInterface   $elasticaObjectPersister
      */
     public function __construct(
         ArticleHydratorInterface $articleHydrator,
         ObjectManager $articleManager,
         ArticleRepositoryInterface $articleRepository,
-        EventDispatcherInterface $eventDispatcher
+        EventDispatcherInterface $eventDispatcher,
+        ObjectPersisterInterface $elasticaObjectPersister
     ) {
         $this->articleHydrator = $articleHydrator;
         $this->articleManager = $articleManager;
         $this->articleRepository = $articleRepository;
         $this->eventDispatcher = $eventDispatcher;
+        $this->elasticaObjectPersister = $elasticaObjectPersister;
     }
 
     /**
@@ -76,6 +86,7 @@ final class UpdatedPackageListener
     public function onUpdated(GenericEvent $event)
     {
         $package = $this->getPackage($event);
+        $this->elasticaObjectPersister->replaceOne($package);
 
         if (ContentInterface::STATUS_USABLE !== $package->getPubStatus()) {
             return;
@@ -84,9 +95,9 @@ final class UpdatedPackageListener
         $this->eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_DISABLE);
 
         foreach ($this->articleRepository->findBy(['package' => $package]) as $article) {
-            $this->articleHydrator->hydrate($article, $package);
-            $this->eventDispatcher->dispatch(ArticleEvents::PRE_CREATE, new ArticleEvent($article, $package));
-            $this->eventDispatcher->dispatch(ArticleEvents::PUBLISH, new ArticleEvent($article));
+            $article = $this->articleHydrator->hydrate($article, $package);
+            $this->eventDispatcher->dispatch(ArticleEvents::PRE_CREATE, new ArticleEvent($article, $package, ArticleEvents::PRE_CREATE));
+            $this->eventDispatcher->dispatch(HttpCacheEvent::EVENT_NAME, new HttpCacheEvent($article));
         }
 
         $this->articleManager->flush();

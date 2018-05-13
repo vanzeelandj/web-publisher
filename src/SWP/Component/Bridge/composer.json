@@ -11,8 +11,8 @@
     ],
     "license":"AGPL-3.0",
     "require": {
-        "php": "^7.0",
-        "justinrainbow/json-schema": "~2.0",
+        "php": "^7.1",
+        "justinrainbow/json-schema": "~5.0",
         "swp/common": "^0.5",
         "swp/storage": "^0.5",
         "doctrine/common": "^2.6",
@@ -36,7 +36,7 @@
     "minimum-stability": "dev",
     "extra": {
         "branch-alias": {
-            "dev-master": "1.0-dev"
+            "dev-master": "1.2-dev"
         }
     }
 }

@@ -82,9 +82,11 @@ class ArticleService implements ArticleServiceInterface
         switch ($newArticleStatus) {
             case ArticleInterface::STATUS_PUBLISHED:
                 $this->publish($article);
+
                 break;
             default:
                 $this->unpublish($article, $newArticleStatus);
+
                 break;
         }
     }
@@ -101,6 +103,6 @@ class ArticleService implements ArticleServiceInterface
 
     private function dispatchArticleEvent($eventName, ArticleInterface $article)
     {
-        $this->eventDispatcher->dispatch($eventName, new ArticleEvent($article));
+        $this->eventDispatcher->dispatch($eventName, new ArticleEvent($article, null, $eventName));
     }
 }

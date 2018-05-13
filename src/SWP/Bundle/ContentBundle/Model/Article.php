@@ -19,6 +19,7 @@ namespace SWP\Bundle\ContentBundle\Model;
 use Behat\Transliterator\Transliterator;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use SWP\Component\Bridge\Model\AuthorsAwareTrait;
 use SWP\Component\Common\Model\SoftDeletableTrait;
 use SWP\Component\Common\Model\TimestampableTrait;
 use SWP\Component\Common\Model\TranslatableTrait;
@@ -26,9 +27,9 @@ use SWP\Component\Common\Model\TranslatableTrait;
 /**
  * Class Article.
  */
-class Article implements ArticleInterface, MediaAwareArticleInterface
+class Article implements ArticleInterface
 {
-    use TranslatableTrait, SoftDeletableTrait, TimestampableTrait;
+    use TranslatableTrait, SoftDeletableTrait, TimestampableTrait, AuthorsAwareTrait;
 
     /**
      * @var mixed
@@ -116,9 +117,14 @@ class Article implements ArticleInterface, MediaAwareArticleInterface
     protected $code;
 
     /**
-     * @var string
+     * @var Collection|ArticleSourceInterface[]
      */
-    protected $source;
+    protected $sources;
+
+    /**
+     * @var array|null
+     */
+    protected $extra;
 
     /**
      * Article constructor.
@@ -128,6 +134,8 @@ class Article implements ArticleInterface, MediaAwareArticleInterface
         $this->setCreatedAt(new \DateTime());
         $this->setPublishable(false);
         $this->setMedia(new ArrayCollection());
+        $this->sources = new ArrayCollection();
+        $this->authors = new ArrayCollection();
     }
 
     /**
@@ -183,7 +191,7 @@ class Article implements ArticleInterface, MediaAwareArticleInterface
      */
     public function isPublished()
     {
-        return $this->getStatus() === ArticleInterface::STATUS_PUBLISHED;
+        return ArticleInterface::STATUS_PUBLISHED === $this->getStatus();
     }
 
     /**
@@ -257,7 +265,13 @@ class Article implements ArticleInterface, MediaAwareArticleInterface
     {
         $this->title = $title;
 
-        $this->setSlug(Transliterator::urlize($this->title));
+        if (null !== $this->slug) {
+            $this->setSlug($this->slug);
+
+            return;
+        }
+
+        $this->setSlug($this->title);
     }
 
     /**
@@ -273,7 +287,16 @@ class Article implements ArticleInterface, MediaAwareArticleInterface
      */
     public function setSlug($slug)
     {
-        $this->slug = Transliterator::urlize($slug);
+        $urlizedSlug = Transliterator::urlize($slug);
+
+        if ('' === $urlizedSlug) {
+            $slug = str_replace('\'', '-', $slug);
+            $this->slug = Transliterator::transliterate($slug);
+
+            return;
+        }
+
+        $this->slug = $urlizedSlug;
     }
 
     /**
@@ -427,16 +450,60 @@ class Article implements ArticleInterface, MediaAwareArticleInterface
     /**
      * {@inheritdoc}
      */
-    public function getSource()
+    public function addSourceReference(ArticleSourceReferenceInterface $source)
     {
-        return $this->source;
+        if (!$this->hasSourceReference($source)) {
+            $this->sources->add($source);
+        }
     }
 
     /**
      * {@inheritdoc}
      */
-    public function setSource($source)
+    public function removeSourceReference(ArticleSourceReferenceInterface $source)
     {
-        $this->source = $source;
+        $this->sources->removeElement($source);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function hasSourceReference(ArticleSourceReferenceInterface $source): bool
+    {
+        return $this->sources->contains($source);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getSources(): Collection
+    {
+        if (0 < $this->sources->count()) {
+            $sources = new ArrayCollection();
+            /** @var ArticleSourceReferenceInterface $source */
+            foreach ($this->sources as $source) {
+                $sources->add($source->getArticleSource());
+            }
+
+            return $sources;
+        }
+
+        return $this->sources;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getExtra(): ?array
+    {
+        return $this->extra;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setExtra(?array $extra): void
+    {
+        $this->extra = $extra;
     }
 }

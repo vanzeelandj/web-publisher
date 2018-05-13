@@ -33,63 +33,56 @@
             "email": "mischa.gorinskat@sourcefabric.org"
         }
     ],
-    "license":"GPL-3.0",
+    "license":"GPL-3.0-only",
     "autoload": {
         "psr-4": {
             "SWP\\Bundle\\": "src/SWP/Bundle/",
             "SWP\\Component\\": "src/SWP/Component/",
-            "SWP\\Bridge\\": "src/SWP/Bridge/"
+            "SWP\\Bridge\\": "src/SWP/Bridge/",
+            "SWP\\Behat\\": "src/SWP/Behat/"
         },
         "exclude-from-classmap": [ "**/Tests/", "**/spec/" ],
         "classmap": [ "app/AppKernel.php" ]
     },
-    "repositories": [
-        {
-            "type": "vcs",
-            "url": "https://github.com/ahilles107/SyliusThemeBundle"
-        }
-    ],
     "require": {
-        "php": "^7.0",
-        "symfony/symfony": "3.1.*",
-        "symfony/swiftmailer-bundle": "~2.3",
-        "symfony/monolog-bundle": "~2.4",
-        "sensio/distribution-bundle": "v5.0.x",
+        "php": "^7.1",
+        "symfony/symfony": "3.4.6",
+        "symfony/swiftmailer-bundle": "~3.0",
+        "symfony/monolog-bundle": "~3.0",
+        "sensio/distribution-bundle": "~v5.0",
         "sensio/framework-extra-bundle": "~3.0,>=3.0.2",
-        "sensio/generator-bundle": "~3.0",
-        "doctrine/orm": "2.5.*",
-        "doctrine/common": "2.6.*",
-        "doctrine/dbal": "2.5.*",
-        "doctrine/doctrine-bundle": "~1.6",
-        "doctrine/inflector": "^1.0",
+        "doctrine/orm": "2.6.*",
+        "doctrine/common": "2.8.*",
+        "doctrine/dbal": "2.6.*",
+        "doctrine/doctrine-bundle": "~1.8",
+        "doctrine/inflector": "^1.2",
         "doctrine/doctrine-cache-bundle": "1.3.*",
         "guzzlehttp/guzzle": "^6.2",
         "php-http/guzzle6-adapter": "^v1.1",
         "twig/extensions": "~1.0",
-        "twig/twig": "1.29.0",
+        "twig/twig": "~2.4",
         "emanueleminotto/twig-cache-bundle": "~1.0",
         "incenteev/composer-parameter-handler": "~2.0",
         "friendsofsymfony/http-cache": "2.0.0-beta2",
         "friendsofsymfony/http-cache-bundle": "2.0.0-beta1 as 2.0.0",
         "friendsofsymfony/rest-bundle": "2.1.x-dev as 1.5",
-        "friendsofsymfony/user-bundle": "~2.0",
-        "jackalope/jackalope-doctrine-dbal": "1.3.*",
-        "oneup/flysystem-bundle": "^1.4",
+        "friendsofsymfony/user-bundle": "^2.0",
+        "oneup/flysystem-bundle": "^3.0",
         "behat/transliterator": "^1.1",
-        "willdurand/hateoas-bundle": "^1.1",
+        "willdurand/hateoas-bundle": "^1.4",
         "knplabs/knp-paginator-bundle": "^2.4",
         "knplabs/knp-menu-bundle": "^2.1",
         "stof/doctrine-extensions-bundle": "^1.2",
         "symfony-cmf/routing-bundle": "^2.0",
         "symfony-cmf/core-bundle": "^2.0",
-        "sylius/theme-bundle": "dev-master",
+        "sylius/theme-bundle": "^1.1",
         "superdesk/contentapi-sdk-php": "^1.0.0",
-        "justinrainbow/json-schema": "1.4.4",
+        "justinrainbow/json-schema": "~5.0",
         "jms/translation-bundle": "^1.2",
         "hoa/mime": "3.16.01.15",
         "hoa/file": "1.16.01.15",
-        "sentry/sentry-symfony": "^0.4.0",
-        "danielstjules/stringy": "~2.3",
+        "sentry/sentry-symfony": "^2.0",
+        "danielstjules/stringy": "~3.1",
         "burgov/key-value-form-bundle": "@stable",
         "nelmio/api-doc-bundle": "^2.13",
         "nelmio/cors-bundle": "^1.4",
@@ -98,21 +91,33 @@
         "asm89/twig-cache-extension": "^1.3",
         "doctrine/doctrine-migrations-bundle": "^1.0",
         "layershifter/tld-extract": "^1.2",
-        "friendsofsymfony/elastica-bundle": "^4.0"
+        "friendsofsymfony/elastica-bundle": "^5.0",
+        "php-amqplib/rabbitmq-bundle": "^1.14",
+        "fzaninotto/faker": "^1.5",
+        "cboden/ratchet": "^0.4.1",
+        "evenement/evenement": "^3.0",
+        "react/zmq": "dev-master",
+        "gos/web-socket-bundle": "^1.8"
     },
     "require-dev": {
-        "phpspec/phpspec": "^2.4",
-        "phpunit/phpunit": "5.*",
+        "roave/security-advisories": "dev-master",
+        "phpspec/phpspec": "^4.2",
+        "phpunit/phpunit": "^5.4.0",
         "liip/functional-test-bundle": "^1.3",
         "doctrine/doctrine-fixtures-bundle": "^2.2",
-        "nelmio/alice": "2.1.x",
-        "henrikbjorn/phpspec-code-coverage" : "^2.1",
-        "matthiasnoback/symfony-dependency-injection-test": "^v0.7",
+        "nelmio/alice": "^2.1",
+        "matthiasnoback/symfony-dependency-injection-test": "^v1.1",
         "johnkary/phpunit-speedtrap": "^1.0",
         "symfony/phpunit-bridge": "^3.1",
         "symfony-cmf/testing": "2.0.x",
-        "liip/rmt": "dev-master",
-        "pixers/doctrine-profiler-bundle": "^1.0"
+        "liip/rmt": "^1.3",
+        "pixers/doctrine-profiler-bundle": "v1.0.5",
+        "behat/behat": "^3.4",
+        "behat/mink": "^1.7",
+        "behat/mink-browserkit-driver": "^1.3",
+        "behat/symfony2-extension": "^2.1",
+        "behatch/contexts": "^3.0",
+        "behat-extension/doctrine-data-fixtures-extension": "^4.0"
     },
     "replace": {
         "swp/common": "self.version",
@@ -129,7 +134,9 @@
         "swp/facebook-instant-articles-bundle": "self.version",
         "swp/revision-bundle": "self.version",
         "swp/revision": "self.version",
-        "swp/elastic-search-bundle": "self.version"
+        "swp/elastic-search-bundle": "self.version",
+        "swp/output-channel-bundle": "self.version",
+        "swp/output-channel": "self.version"
     },
     "scripts": {
         "post-install-cmd": [
@@ -150,13 +157,16 @@
         ]
     },
     "config": {
-        "bin-dir": "bin"
+        "bin-dir": "bin",
+        "platform": {
+            "php": "7.1.12"
+        }
     },
     "minimum-stability":"dev",
     "prefer-stable": true,
     "extra": {
         "branch-alias": {
-            "dev-master": "0.1-dev"
+            "dev-master": "1.1-dev"
         },
         "symfony-app-dir": "app",
         "symfony-web-dir": "web",
@@ -170,8 +180,7 @@
                 "env(DATABASE_PORT)": "DATABASE_PORT",
                 "env(DATABASE_NAME)": "DATABASE_NAME",
                 "env(SYMFONY_SECRET)": "SYMFONY_SECRET",
-                "env(SWP_DOMAIN)": "SWP_DOMAIN",
-                "domain": "SWP_DOMAIN"
+                "env(SWP_DOMAIN)": "SWP_DOMAIN"
             }
         }
     }

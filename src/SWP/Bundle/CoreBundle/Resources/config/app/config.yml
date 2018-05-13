@@ -2,7 +2,7 @@ services:
     session.memcached:
         class: "Memcached"
         arguments:
-            persistent_id: "%session_memcached_prefix%"
+            - "%session_memcached_prefix%"
         calls:
             - [ addServer, [ "%session_memcached_host%", "%session_memcached_port%" ]]
 
@@ -49,6 +49,9 @@ jms_serializer:
             FOSUserBundle:
                 namespace_prefix: "FOS\\UserBundle"
                 path: "@SWPCoreBundle/Resources/config/serializer/fos-user"
+            SyliusThemeBundle:
+                namespace_prefix: "Sylius\\Bundle\\ThemeBundle"
+                path: "@SWPCoreBundle/Resources/config/serializer/sylius-theme"
 
 swp_templates_system:
     persistence:
@@ -84,12 +87,17 @@ swp_content:
             classes:
                 article:
                     model: SWP\Bundle\CoreBundle\Model\Article
+                    repository: SWP\Bundle\CoreBundle\Repository\ArticleRepository
                 media:
                     model: SWP\Bundle\CoreBundle\Model\ArticleMedia
                 route:
                     model: SWP\Bundle\CoreBundle\Model\Route
                 image:
                     model: SWP\Bundle\CoreBundle\Model\Image
+                article_source:
+                    model: SWP\Bundle\CoreBundle\Model\ArticleSource
+                author:
+                    repository: SWP\Bundle\ContentBundle\Doctrine\ORM\ArticleAuthorRepository
 
 swp_revision:
     persistence:
@@ -149,7 +157,7 @@ fos_user:
     firewall_name: main
     user_class: SWP\Bundle\CoreBundle\Model\User
     from_email:
-        address: contact@publisher.dev
+        address: contact@publisher.test
         sender_name: Publisher
     registration:
         confirmation:
@@ -203,6 +211,16 @@ swp_user:
                     model: SWP\Bundle\CoreBundle\Model\User
                     interface: SWP\Bundle\CoreBundle\Model\UserInterface
 
+swp_webhook:
+    persistence:
+        orm:
+            enabled: true
+            classes:
+                webhook:
+                    model: SWP\Bundle\CoreBundle\Model\Webhook
+                    interface: SWP\Bundle\CoreBundle\Model\WebhookInterface
+                    repository: SWP\Bundle\CoreBundle\Repository\WebhookRepository
+
 swp_settings:
     persistence:
         orm:
@@ -239,7 +257,86 @@ swp_settings:
             scope: user
             type: string
             value: "{}"
+        user_private_preferences:
+            scope: user
+            type: string
+            value: "{}"
+        user_favourite_articles:
+            scope: user
+            type: string
+            value: "{}"
+        theme_logo:
+            value: ""
+            scope: theme
+            type: string
 
 swp_analytics:
     metrics_listener:
         enabled: false
+    persistence:
+        orm:
+            enabled: true
+            classes:
+                article_statistics:
+                    model: SWP\Bundle\CoreBundle\Model\ArticleStatistics
+                article_events:
+                    model: SWP\Bundle\CoreBundle\Model\ArticleEvent
+
+swp_output_channel:
+    persistence:
+        orm:
+            enabled: true
+            classes:
+                output_channel:
+                    model: SWP\Bundle\CoreBundle\Model\OutputChannel
+
+old_sound_rabbit_mq:
+    connections:
+        default:
+            host:     '%env(RABBIT_MQ_HOST)%'
+            port:     '%env(RABBIT_MQ_PORT)%'
+            user:     '%env(RABBIT_MQ_USER)%'
+            password: '%env(RABBIT_MQ_PASSWORD)%'
+            vhost:    '/'
+            lazy:     true
+            connection_timeout: 3
+            read_write_timeout: 3
+            # requires php-amqplib v2.4.1+ and PHP5.4+
+            keepalive: false
+            # requires php-amqplib v2.4.1+
+            heartbeat: 0
+    producers:
+        send_webhook:
+            connection:       default
+            exchange_options: {name: '%kernel.environment%_send_webhook', type: direct}
+    consumers:
+        send_webhook:
+            connection:       default
+            exchange_options: {name: '%kernel.environment%_send_webhook', type: direct}
+            queue_options:    {name: '%kernel.environment%_send_webhook'}
+            callback:         SWP\Bundle\CoreBundle\Consumer\SendWebhookConsumer
+        analytics_event:
+            connection:       default
+            exchange_options: {name: '%kernel.environment%_analytics_event', type: direct}
+            queue_options:    {name: '%kernel.environment%_analytics_event'}
+            callback:         SWP\Bundle\CoreBundle\Consumer\AnalyticsEventConsumer
+
+bazinga_hateoas:
+    twig_extension:
+        enabled: false
+
+gos_web_socket:
+    assetic: false
+    server:
+        port: '%env(WEBSOCKET_PORT)%'
+        host: '%env(WEBSOCKET_HOST)%'
+        router:
+            resources:
+                - '@SWPCoreBundle/Resources/config/pubsub/routing.yml'
+    pushers:
+        zmq:
+            default: true
+            host: '%env(WEBSOCKET_HOST)%'
+            port: 5555
+            persistent: true
+            protocol: tcp

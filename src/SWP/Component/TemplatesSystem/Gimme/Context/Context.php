@@ -58,6 +58,21 @@ class Context implements \ArrayAccess
     private $temporaryMeta = [];
 
     /**
+     * @var bool
+     */
+    private $previewMode = false;
+
+    /**
+     * @var array
+     */
+    private $supportedCache = [];
+
+    /**
+     * @var array
+     */
+    private $configurationCache = [];
+
+    /**
      * Context constructor.
      *
      * @param Cache  $metadataCache
@@ -115,11 +130,19 @@ class Context implements \ArrayAccess
     public function loadConfigsFromPath($configsPath)
     {
         if (file_exists($configsPath)) {
-            $finder = new Finder();
-            $finder->in($configsPath)->files()->name('*.yml');
-
-            foreach ($finder as $file) {
-                $this->addNewConfig($file->getRealPath());
+            if (!$this->metadataCache->contains('metadata_config_files')) {
+                $finder = new Finder();
+                $finder->in($configsPath)->files()->name('*.yml');
+                $files = [];
+                foreach ($finder as $file) {
+                    $files[] = $file->getRealPath();
+                    $this->addNewConfig($file->getRealPath());
+                }
+                $this->metadataCache->save('metadata_config_files', $files);
+            } else {
+                foreach ($this->metadataCache->fetch('metadata_config_files') as $file) {
+                    $this->addNewConfig($file);
+                }
             }
         }
     }
@@ -137,8 +160,15 @@ class Context implements \ArrayAccess
             throw new \Exception('Context supports configuration loading only for objects');
         }
 
+        $objectClassName = get_class($value);
+        if (array_key_exists($objectClassName, $this->configurationCache)) {
+            return $this->configurationCache[$objectClassName];
+        }
+
         foreach ($this->getAvailableConfigs() as $class => $configuration) {
             if ($value instanceof $class) {
+                $this->configurationCache[$objectClassName] = $configuration;
+
                 return $configuration;
             }
         }
@@ -167,7 +197,15 @@ class Context implements \ArrayAccess
             return false;
         }
 
-        return count($this->getConfigurationForValue($value)) > 0 ? true : false;
+        $objectClassName = get_class($value);
+        if (array_key_exists($objectClassName, $this->supportedCache)) {
+            return $this->supportedCache[$objectClassName];
+        }
+
+        $result = count($this->getConfigurationForValue($value)) > 0 ? true : false;
+        $this->supportedCache[$objectClassName] = $result;
+
+        return $result;
     }
 
     /**
@@ -190,6 +228,7 @@ class Context implements \ArrayAccess
         }
 
         $this->addAvailableConfig($configuration);
+        $this->supportedCache = [];
 
         return $configuration;
     }
@@ -233,7 +272,6 @@ class Context implements \ArrayAccess
         $name = $configuration['name'];
         if (!array_key_exists($name, $this->registeredMeta)) {
             $this->registeredMeta[$name] = $configuration;
-
             if (null !== $meta) {
                 $this[$name] = $meta;
             }
@@ -250,6 +288,22 @@ class Context implements \ArrayAccess
     public function getRegisteredMeta()
     {
         return $this->registeredMeta;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isPreviewMode(): bool
+    {
+        return $this->previewMode;
+    }
+
+    /**
+     * @param bool $previewMode
+     */
+    public function setPreviewMode(bool $previewMode)
+    {
+        $this->previewMode = $previewMode;
     }
 
     /**
@@ -304,7 +358,7 @@ class Context implements \ArrayAccess
         $metas = [];
         $keysId = md5(serialize($keys));
 
-        if (count($keys) === 0) {
+        if (0 === count($keys)) {
             foreach ($this->registeredMeta as $key => $configuration) {
                 if (isset($this[$key])) {
                     $metas[$key] = $this[$key];
@@ -341,5 +395,16 @@ class Context implements \ArrayAccess
         }
 
         return true;
+    }
+
+    /**
+     *  Resets context data.
+     */
+    public function reset()
+    {
+        $this->currentPage = null;
+        $this->registeredMeta = [];
+        $this->availableConfigs = [];
+        $this->previewMode = false;
     }
 }

@@ -14,6 +14,7 @@
 
 namespace SWP\Bundle\CoreBundle\Command;
 
+use SWP\Bundle\MultiTenancyBundle\MultiTenancyEvents;
 use SWP\Component\Common\Model\ThemeAwareTenantInterface;
 use SWP\Component\MultiTenancy\Exception\TenantNotFoundException;
 use Symfony\Bundle\FrameworkBundle\Command\ContainerAwareCommand;
@@ -50,9 +51,21 @@ class ThemeSetupCommand extends ContainerAwareCommand
                 InputOption::VALUE_NONE,
                 'If set, forces to execute an action without confirmation.'
             )
+            ->addOption(
+                'activate',
+                'a',
+                InputOption::VALUE_NONE,
+                'If set, theme will be activated in tenant.'
+            )
+            ->addOption(
+                'processGeneratedData',
+                'p',
+                InputOption::VALUE_NONE,
+                'If set, theme installer will process generated data defined in theme config.'
+            )
             ->setHelp(
                 <<<'EOT'
-                The <info>%command.name%</info> command installs your custom theme for given tenant:
+The <info>%command.name%</info> command installs your custom theme for given tenant:
 
   <info>%command.full_name% <tenant> <theme_dir></info>
 
@@ -67,6 +80,13 @@ where <comment><tenant></comment> is the tenant code you typed in the first argu
 To force an action, you need to add an option: <info>--force</info>:
 
   <info>%command.full_name% <tenant> <theme_dir> --force</info>
+
+To activate this theme in tenant, you need to add and option <info>--activate</info>:
+  <info>%command.full_name% <tenant> <theme_dir> --activate</info>
+  
+If option <info>--processGeneratedData</info> will be passed theme installator will 
+generate declared in theme config elements like: routes, articles, menus, widgets, 
+content lists and containers
 EOT
             );
     }
@@ -77,49 +97,69 @@ EOT
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $fileSystem = new Filesystem();
-        $helper = $this->getHelper('question');
-        $force = true === $input->getOption('force');
-
-        /** @var ThemeAwareTenantInterface $tenant */
-        $tenant = $this->getContainer()->get('swp.repository.tenant')
-            ->findOneByCode($input->getArgument('tenant'));
-
         $sourceDir = $input->getArgument('theme_dir');
-
-        $this->assertTenantIsFound($input->getArgument('tenant'), $tenant);
-
-        if (!$fileSystem->exists($sourceDir) || !is_dir($sourceDir)) {
+        if (!$fileSystem->exists($sourceDir) || !\is_dir($sourceDir)) {
             $output->writeln(sprintf('<error>Directory "%s" does not exist or it is not a directory!</error>', $sourceDir));
 
             return;
         }
 
-        $themesDir = $this->getContainer()->getParameter('swp.theme.configuration.default_directory');
-        $tenantThemeDir = $themesDir.\DIRECTORY_SEPARATOR.$tenant->getCode();
-        $themeDir = $tenantThemeDir.\DIRECTORY_SEPARATOR.basename($sourceDir);
+        if (!$fileSystem->exists($sourceDir.DIRECTORY_SEPARATOR.'theme.json')) {
+            $output->writeln('<error>Source directory doesn\'t contain a theme!</error>');
 
-        try {
-            $question = new ConfirmationQuestion(
-                '<question>This will override your current theme. Continue with this action? (yes/no)<question> <comment>[yes]</comment> ',
-                true,
-                '/^(y|j)/i'
-            );
+            return;
+        }
 
-            if (!$force) {
-                if (!$helper->ask($input, $output, $question)) {
-                    return;
-                }
+        $container = $this->getContainer();
+        $tenantRepository = $container->get('swp.repository.tenant');
+        $tenantContext = $container->get('swp_multi_tenancy.tenant_context');
+        $eventDispatcher = $container->get('event_dispatcher');
+        $revisionListener = $container->get('swp_core.listener.tenant_revision');
+
+        $tenant = $tenantRepository->findOneByCode($input->getArgument('tenant'));
+        $this->assertTenantIsFound($input->getArgument('tenant'), $tenant);
+        $tenantContext->setTenant($tenant);
+        $revisionListener->setRevisions();
+        $eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_ENABLE);
+        $themesDir = $container->getParameter('swp.theme.configuration.default_directory');
+        $themeDir = $themesDir.\DIRECTORY_SEPARATOR.$tenant->getCode().\DIRECTORY_SEPARATOR.basename($sourceDir);
+
+        $helper = $this->getHelper('question');
+        $question = new ConfirmationQuestion(
+            '<question>This will override your current theme. Continue with this action? (yes/no)<question> <comment>[yes]</comment> ',
+            true,
+            '/^(y|j)/i'
+        );
+
+        if (!$input->getOption('force')) {
+            $answer = $helper->ask($input, $output, $question);
+            if (!$answer) {
+                return;
             }
+        }
 
-            $fileSystem->mirror($sourceDir, $themeDir, null, ['override' => true, 'delete' => true]);
+        $themeService = $container->get('swp_core.service.theme');
+        $installationResult = $themeService->installAndProcessGeneratedData(
+            $sourceDir,
+            $themeDir,
+            $input->getOption('processGeneratedData'),
+            $input->getOption('activate')
+        );
 
-            $output->writeln('<info>Theme has been installed successfully!</info>');
-        } catch (\Exception $e) {
-            $output->writeln('<error>Theme could not be installed!</error>');
-            $output->writeln('<error>Stacktrace: '.$e->getMessage().'</error>');
+        if ($installationResult instanceof \Exception) {
+            $output->writeln('<error>Theme could not be installed, files are reverted to previous version!</error>');
+            $output->writeln('<error>Error message: '.$installationResult->getMessage().'</error>');
+        } elseif (\is_array($installationResult)) {
+            foreach ($installationResult as $message) {
+                $output->writeln('<info>'.$message.'</info>');
+            }
         }
     }
 
+    /**
+     * @param string                         $tenantCode
+     * @param ThemeAwareTenantInterface|null $tenant
+     */
     private function assertTenantIsFound(string $tenantCode, ThemeAwareTenantInterface $tenant = null)
     {
         if (null === $tenant) {

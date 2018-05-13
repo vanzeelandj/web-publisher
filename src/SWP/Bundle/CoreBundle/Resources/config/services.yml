@@ -2,8 +2,12 @@ parameters:
     swp_core.routing.route_enhancer.class: SWP\Bundle\CoreBundle\Enhancer\RouteEnhancer
     swp_core.theme.resolver.template_name.class: SWP\Bundle\CoreBundle\Resolver\TemplateNameResolver
     swp_multi_tenancy.tenant_context.class: SWP\Bundle\CoreBundle\Context\CachedTenantContext
+    themes.upload_dir: "%kernel.project_dir%"
 
 services:
+    _defaults:
+        public: true
+
     swp_core.detection.device_detection:
         class: SWP\Bundle\CoreBundle\Detection\DeviceDetection
 
@@ -22,16 +26,11 @@ services:
 
     swp_core.theme.context.tenant_aware:
         class: SWP\Bundle\CoreBundle\Theme\TenantAwareThemeContext
-        public: false
+        public: true
         arguments:
             - "@swp_multi_tenancy.tenant_context"
             - "@sylius.repository.theme"
             - "@doctrine_cache.providers.main_cache"
-
-    swp_core.no_theme_exception_listener:
-        class: SWP\Bundle\CoreBundle\EventListener\NoThemeExceptionListener
-        tags:
-            - { name: kernel.event_listener, event: kernel.exception }
 
     swp_core.resources_list_response_listener:
         class: SWP\Component\Common\EventListener\ResourceResponseListener
@@ -45,6 +44,7 @@ services:
 
     swp_core.routing.route_enhancer:
         class: '%swp_core.routing.route_enhancer.class%'
+        lazy: true
         arguments:
             - "@swp_core.theme.resolver.template_name"
             - "@swp_template_engine_loader_chain"
@@ -58,15 +58,120 @@ services:
             - '@sylius.repository.theme'
             - '@swp_multi_tenancy.tenant_context'
 
+    swp_core.uploader.theme:
+        class: SWP\Bundle\CoreBundle\Theme\Uploader\OrganizationAwareThemeUploader
+        arguments:
+            - '@swp_multi_tenancy.tenant_context'
+            - '%themes.upload_dir%/web/uploads'
+
+    swp_core.uploader.theme_logo:
+        class: SWP\Bundle\CoreBundle\Theme\Uploader\ThemeLogoUploader
+        arguments:
+            - '@swp_filesystem'
+
+    swp_core.installer.theme:
+        class: SWP\Bundle\CoreBundle\Theme\Installer\TenantAwareThemeInstaller
+        arguments:
+            - '@swp_multi_tenancy.tenant_context'
+            - '@swp_core.loader.organization.theme'
+            - '@twig'
+            - '%swp.theme.configuration.default_directory%'
+            - '@sylius.theme.asset.assets_installer'
+            - '%kernel.project_dir%/web'
+
+    swp_core.generator.theme.fake_article:
+        class: SWP\Bundle\CoreBundle\Theme\Generator\FakeArticlesGenerator
+        arguments:
+            - '@swp.factory.article'
+            - '@swp_content_bundle.manager.media'
+            - '@swp.factory.media'
+            - '@swp.repository.article'
+            - '@swp.factory.article_statistics'
+
+    swp_core.service.theme:
+        class: SWP\Bundle\CoreBundle\Theme\Service\ThemeService
+        arguments:
+            - '@swp_core.installer.theme'
+            - '@swp_core.processor.theme.required_data'
+            - '%kernel.cache_dir%'
+            - '@swp_multi_tenancy.tenant_context'
+            - '@sylius.repository.theme'
+            - '@sylius.context.theme'
+
+    swp_core.generator.theme.routes:
+        class: SWP\Bundle\CoreBundle\Theme\Generator\ThemeRoutesGenerator
+        arguments:
+            - '@swp.service.route'
+            - '@swp.repository.route'
+            - '@swp.provider.route'
+            - '@swp.factory.route'
+            - '@form.factory'
+            - '@swp_core.generator.theme.fake_article'
+
+    swp_core.generator.theme.menus:
+        class: SWP\Bundle\CoreBundle\Theme\Generator\ThemeMenusGenerator
+        arguments:
+            - '@swp.provider.route'
+            - '@form.factory'
+            - '@swp.factory.menu'
+            - '@swp.repository.menu'
+            - '@swp_menu.manager.menu_item'
+
+    swp_core.generator.theme.containers:
+        class: SWP\Bundle\CoreBundle\Theme\Generator\ThemeContainersGenerator
+        arguments:
+            - '@form.factory'
+            - '@swp.factory.container'
+            - '@swp.repository.container'
+            - '@swp_template_engine.container.service'
+
+    swp_core.generator.theme.widgets:
+        class: SWP\Bundle\CoreBundle\Theme\Generator\ThemeWidgetsGenerator
+        arguments:
+            - '@form.factory'
+            - '@swp.factory.widget_model'
+            - '@swp.repository.widget_model'
+            - '@swp.factory.container_widget'
+            - '@swp.provider.container'
+
+    swp_core.generator.theme.content_lists:
+        class: SWP\Bundle\CoreBundle\Theme\Generator\ThemeContentListsGenerator
+        arguments:
+            - '@form.factory'
+            - '@swp.factory.content_list'
+            - '@swp.repository.content_list'
+            - '@swp_core.generator.theme.fake_article'
+            - '@event_dispatcher'
+
+    swp_core.processor.theme.required_data:
+        class: SWP\Bundle\CoreBundle\Theme\Processor\RequiredDataProcessor
+        arguments:
+            - '@swp_core.generator.theme.routes'
+            - '@swp_core.generator.theme.menus'
+            - '@swp_core.generator.theme.containers'
+            - '@swp_core.generator.theme.widgets'
+            - '@swp_core.generator.theme.content_lists'
+
+    swp_core.loader.organization.theme:
+        class: Sylius\Bundle\ThemeBundle\Loader\ThemeLoader
+        arguments:
+            - '@swp_core.organization.theme.configuration.provider'
+            - '@sylius.factory.theme'
+            - '@sylius.factory.theme_author'
+            - '@sylius.factory.theme_screenshot'
+            - '@sylius.theme.hydrator'
+            - '@sylius.theme.circular_dependency_checker'
+
     swp_core.security.session.domain_dynamic_storage:
         class: SWP\Bundle\CoreBundle\Security\Storage\DynamicDomainSessionStorage
         arguments:
-            - "%domain%"
+            - "%env(SWP_DOMAIN)%"
 
     swp_core.listener.article_rules_subscriber:
         class: SWP\Bundle\CoreBundle\EventSubscriber\ProcessArticleRulesSubscriber
         arguments:
             - '@swp_core.processor.tenant_aware_rule'
+            - '@SWP\Bundle\CoreBundle\Provider\PublishDestinationProvider'
         tags:
             - { name: kernel.event_subscriber }
 
@@ -90,6 +195,14 @@ services:
         tags:
             - { name: kernel.event_subscriber }
 
+    swp_core.listener.activate_livesite_editor:
+        class: SWP\Bundle\CoreBundle\EventListener\ActivateLivesiteEditorListener
+        arguments:
+            - '@security.token_storage'
+            - '%kernel.environment%'
+        tags:
+            - { name: kernel.event_listener, event: kernel.response, method: onKernelResponse }
+
     swp_core.subscriber.http_cache:
         class: SWP\Bundle\CoreBundle\EventSubscriber\HttpCacheSubscriber
         arguments:
@@ -108,6 +221,7 @@ services:
 
     swp.security.preview_token_authenticator:
         class: SWP\Bundle\CoreBundle\Security\Authenticator\PreviewTokenAuthenticator
+        public: true
         parent: swp.security.token_authenticator
 
     swp.security.user_provider:
@@ -129,6 +243,12 @@ services:
             - "@swp_core.theme.context.tenant_aware"
             - "@sylius.theme.hierarchy_provider"
             - "%takeit_amp_html.configuration.theme.theme_path%"
+
+    swp.twig.cache.tenant_aware:
+        class: SWP\Bundle\CoreBundle\Twig\Cache\TenantAwareCache
+        arguments:
+            - '%kernel.cache_dir%/twig'
+            - '@swp_multi_tenancy.tenant_context'
 
     swp.facebook.service.instant_articles:
         class: SWP\Bundle\CoreBundle\Service\FacebookInstantArticlesService
@@ -154,11 +274,27 @@ services:
 
     swp_core.listener.tenant_revision:
         class: SWP\Bundle\CoreBundle\EventListener\TenantRevisionListener
+        lazy: true
         arguments:
             - "@swp.repository.revision"
             - "@swp_revision.context.revision"
         tags:
             - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
+    swp_core.listener.preview_mode:
+        class: SWP\Bundle\CoreBundle\EventListener\PreviewModeListener
+        arguments:
+            - "@swp_template_engine_context"
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
+
+    SWP\Bundle\CoreBundle\EventListener\SecuredContentPushListener:
+        arguments:
+            - '@swp_multi_tenancy.tenant_context'
+        tags:
+            - { name: kernel.event_listener, event: kernel.request, method: onKernelRequest }
+
     swp.matcher.article_criteria:
         class: SWP\Bundle\CoreBundle\Matcher\ArticleCriteriaMatcher
 
@@ -168,6 +304,7 @@ services:
             - '@swp.remover.content_list_items_remover'
             - '@swp.repository.article'
             - '@swp.factory.content_list_item'
+            - "@swp.provider.route"
         tags:
             - { name: kernel.event_listener, event: swp.list_criteria_change, method: onListCriteriaChange }
 
@@ -212,6 +349,16 @@ services:
         class: SWP\Bundle\CoreBundle\EventSubscriber\ScopeContextSubscriber
         arguments:
           - '@swp_settings.context.scope'
+          - '@swp_core.theme.context.tenant_aware'
+        tags:
+            - { name: kernel.event_subscriber }
+
+    swp_core.webhook.subscriber:
+        class: SWP\Bundle\CoreBundle\EventSubscriber\WebhookEventsSubscriber
+        arguments:
+            - '@old_sound_rabbit_mq.send_webhook_producer'
+            - '@jms_serializer'
+            - '@swp.repository.webhook'
         tags:
             - { name: kernel.event_subscriber }
 
@@ -222,6 +369,14 @@ services:
           - '@router.default'
         tags:
             - { name: jms_serializer.subscribing_handler }
+
+    swp_core.jms_theme_handler:
+        class: SWP\Bundle\CoreBundle\Serializer\ThemeSerializationSubscriber
+        arguments:
+          - '@router.default'
+          - '@swp.serializer'
+        tags:
+            - { name: jms_serializer.event_subscriber }
 
     swp_core.jms_articles_count_handler:
         class: SWP\Bundle\CoreBundle\Serializer\ArticlesCountHandler
@@ -237,6 +392,7 @@ services:
           - '@swp.repository.article'
           - '@event_dispatcher'
           - '@swp.factory.article'
+          - '@swp.factory.article_statistics'
           - '@swp_multi_tenancy.tenant_context'
 
     swp_core.listener.canceled_package:
@@ -255,6 +411,7 @@ services:
             - '@swp.object_manager.article'
             - '@swp.repository.article'
             - '@event_dispatcher'
+            - '@fos_elastica.object_persister.swp.package'
         tags:
             - { name: kernel.event_listener, event: swp.bridge.package_post_update, method: onUpdated, priority: 20 }
 
@@ -272,3 +429,135 @@ services:
             - '@request_stack'
             - '@event_dispatcher'
             - '@doctrine_cache.providers.main_cache'
+            - '@doctrine.orm.entity_manager'
+
+    swp_core.loader.media:
+        class: SWP\Bundle\CoreBundle\Loader\PreviewArticleMediaLoader
+        arguments:
+            - "@swp_template_engine_context.factory.meta_factory"
+            - "@swp_template_engine_context"
+        tags:
+            - { name: swp.meta_loader.add }
+
+    swp_core.fragment.renderer.external:
+        class: SWP\Bundle\CoreBundle\Fragment\ExternalFragmentRenderer
+        arguments:
+            - "@kernel"
+            - "@event_dispatcher"
+        public: false
+
+    swp_core.fragment.renderer.external_esi:
+        class: SWP\Bundle\CoreBundle\Fragment\ExternalEsiFragmentRenderer
+        arguments:
+            - "@esi"
+            - "@swp_core.fragment.renderer.external"
+            - "@uri_signer"
+        tags:
+            - { name: kernel.fragment_renderer, alias: external_esi }
+        calls:
+            - method: setFragmentPath
+              arguments:
+                  - '%fragment.path%'
+
+    swp_core.param_converter.article_preview.resolve_entity_converter:
+        class: SWP\Bundle\CoreBundle\Request\ParamConverter\ResolveEntityParamConverter
+        public: false
+        tags:
+            - { name: request.param_converter, priority: 11, converter: doctrine.orm }
+        arguments:
+            - {'Takeit\Bundle\AmpHtmlBundle\Model\AmpInterface': "%takeit_amp_html.configuration.model.class%"}
+            - '@swp_template_engine_context'
+            - '@swp_content_bundle.processor.article_body'
+            - '@swp.repository.package'
+            - '@swp.factory.article'
+            - '@?doctrine'
+
+    swp.adder.tenant_aware_article_source:
+        class: SWP\Bundle\CoreBundle\Service\TenantAwareArticleSourcesAdder
+        arguments:
+            - '@swp.factory.article_source'
+            - '@swp.service.article_source'
+            - '@swp.repository.article_source'
+            - '@swp_multi_tenancy.tenant_context'
+
+    SWP\Bundle\CoreBundle\Consumer\SendWebhookConsumer:
+        arguments:
+            - '@jms_serializer'
+
+    SWP\Bundle\CoreBundle\Consumer\AnalyticsEventConsumer:
+        arguments:
+            - '@SWP\Bundle\AnalyticsBundle\Services\ArticleStatisticsService'
+            - '@swp_multi_tenancy.tenant_resolver'
+            - '@swp_multi_tenancy.tenant_context'
+
+    swp_core.article.populator:
+        class: SWP\Bundle\CoreBundle\Rule\Populator\ArticlePopulator
+        arguments:
+          - '@swp.factory.article'
+          - '@swp.factory.article_statistics'
+          - '@event_dispatcher'
+          - '@swp.repository.article'
+          - '@swp_multi_tenancy.tenant_context'
+
+    SWP\Bundle\CoreBundle\Provider\ThemeSettingsProvider:
+        arguments:
+            - '@swp_core.theme.context.tenant_aware'
+            - '%swp.theme.configuration.filename%'
+
+    SWP\Bundle\SettingsBundle\Provider\SettingsProviderChain:
+        arguments:
+            - ['@SWP\Bundle\SettingsBundle\Provider\ConfigurationSettingsProvider', '@SWP\Bundle\CoreBundle\Provider\ThemeSettingsProvider']
+
+    swp_core.provider.theme_logo:
+        class: SWP\Bundle\CoreBundle\Theme\Provider\ThemeLogoProvider
+        arguments:
+            - '@swp_settings.manager.settings'
+            - '@router.default'
+            - '@swp_multi_tenancy.tenant_context'
+
+    SWP\Bundle\CoreBundle\Processor\RulesProcessor:
+        arguments:
+            - '@swp.repository.tenant'
+            - '@swp.repository.route'
+
+    SWP\Bundle\CoreBundle\Matcher\RulesMatcher:
+        arguments:
+            - '@event_dispatcher'
+            - '@swp.repository.rule'
+            - '@swp_rule.evaluator.rule'
+            - '@SWP\Bundle\CoreBundle\Processor\RulesProcessor'
+            - '@swp.factory.article'
+            - '@SWP\Bundle\CoreBundle\Provider\PublishDestinationProvider'
+
+    SWP\Bundle\CoreBundle\Provider\PublishDestinationProvider:
+        arguments:
+            - '@swp.repository.publish_destination'
+            - '@swp_multi_tenancy.tenant_context'
+
+    SWP\Bundle\CoreBundle\Service\ArticlePreviewTemplateHelper:
+        arguments:
+            - '@swp_template_engine_context.factory.meta_factory'
+            - '@swp_template_engine_context'
+
+    SWP\Bundle\CoreBundle\Service\ArticlePreviewer:
+        arguments:
+            - '@swp.factory.article'
+            - '@swp_content_bundle.processor.article_body'
+            - '@SWP\Bundle\CoreBundle\Service\ArticlePreviewTemplateHelper'
+
+    swp.random_string_generator:
+        alias: swp_multi_tenancy.random_string_generator
+
+    SWP\Bundle\CoreBundle\EventListener\SendArticleToOutputChannelListener:
+        arguments:
+            - '@SWP\Bundle\CoreBundle\Adapter\CompositeOutputChannelAdapter'
+            - '@swp_multi_tenancy.tenant_context'
+        tags:
+            - { name: kernel.event_listener, event: swp.article.published, method: send }
+
+    SWP\Bundle\CoreBundle\EventListener\PushNotificationOnPackageProcessedListener:
+        arguments:
+            - '@gos_web_socket.zmq.pusher'
+            - '@swp.serializer'
+        tags:
+            - { name: kernel.event_listener, event: swp.bridge.package_processed, method: onProcessed }

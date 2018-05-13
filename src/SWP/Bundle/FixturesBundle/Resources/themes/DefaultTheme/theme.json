@@ -9,5 +9,226 @@
             "homepage": "https://www.sourcefabric.org",
             "role": "Organization"
         }
-    ]
+    ],
+    "settings": {
+        "primary_color": {
+            "label": "Primary Color",
+            "value": "#d74b4b",
+            "type": "string"
+        },
+
+        "primary_font_family": {
+            "label": "Primary Font Family",
+            "value": "Oswald",
+            "type": "string",
+            "help": "The primary font",
+            "options": [
+                {"value": "Oswald", "label": "Oswald"},
+                {"value": "Roboto", "label": "Roboto"},
+                {"value": "Merriweather", "label": "Merriweather"}
+            ]
+        },
+        "secondary_font_family": {
+            "value": "Tahoma",
+            "type": "string",
+            "options": [
+                {"value": "Tahoma", "label": "Tahoma"},
+                {"value": "Merriweather", "label": "Merriweather"},
+                {"value": "Times New Roman", "label": "Times New Roman"},
+                {"value": "Georgia", "label": "Georgia"},
+                {"value": "Roboto", "label": "Roboto"}
+            ]
+        },
+        "body_font_size": {
+            "label": "Body Font Size",
+            "value": 14,
+            "type": "integer",
+            "options": [
+                {"value": 14, "label": "14px"},
+                {"value": 16, "label": "16px"},
+                {"value": 18, "label": "18px"}
+            ]
+        }
+    },
+    "generatedData": {
+        "routes": [
+            {
+                "name": "politics",
+                "slug": "politics",
+                "type": "collection",
+                "templateName": "category.html.twig",
+                "articlesTemplateName": "article.html.twig",
+                "numberOfArticles": 1
+            },
+            {
+                "name": "business",
+                "slug": "business",
+                "type": "collection"
+            },
+            {
+                "name": "sci/tech",
+                "slug": "scitech",
+                "type": "collection"
+            },
+            {
+                "name": "health",
+                "slug": "health",
+                "type": "collection"
+            },
+            {
+                "name": "entertainment",
+                "slug": "entertainment",
+                "type": "collection"
+            },
+            {
+                "name": "sports",
+                "slug": "sports",
+                "type": "collection"
+            },
+            {
+                "name": "football",
+                "slug": "football",
+                "type": "collection",
+                "parent": "sports"
+            }
+        ],
+        "menus": [
+            {
+                "name": "mainNavigation",
+                "label": "Main Navigation",
+                "children": [
+                    {
+                        "name": "home",
+                        "label": "Home",
+                        "uri": "/"
+                    },
+                    {
+                        "name": "politics",
+                        "label": "Politics",
+                        "route": "politics"
+                    },
+                    {
+                        "name": "business",
+                        "label": "Business",
+                        "route": "business"
+                    },
+                    {
+                        "name": "scitech",
+                        "label": "Sci/Tech",
+                        "route": "sci/tech"
+                    },
+                    {
+                        "name": "health",
+                        "label": "Health",
+                        "route": "health"
+                    },
+                    {
+                        "name": "entertainment",
+                        "label": "Entertainment",
+                        "route": "entertainment"
+                    },
+                    {
+                        "name": "sports",
+                        "label": "Sports",
+                        "route": "sports",
+                        "children": [
+                            {
+                                "name": "football",
+                                "label": "Football",
+                                "route": "football"
+                            }
+                        ]
+                    }
+                ]
+            },
+            {
+                "name": "footerPrim",
+                "label": "Footer Navigation",
+                "children": [
+                    {
+                        "name": "politics",
+                        "label": "Politics",
+                        "route": "politics"
+                    },
+                    {
+                        "name": "business",
+                        "label": "Business",
+                        "route": "business"
+                    },
+                    {
+                        "name": "scitech",
+                        "label": "Sci/Tech",
+                        "route": "sci/tech"
+                    },
+                    {
+                        "name": "health",
+                        "label": "Health",
+                        "route": "health"
+                    },
+                    {
+                        "name": "entertainment",
+                        "label": "Entertainment",
+                        "route": "entertainment"
+                    },
+                    {
+                        "name": "sports",
+                        "label": "Sports",
+                        "route": "sports",
+                        "children": [
+                            {
+                                "name": "football",
+                                "label": "Football",
+                                "route": "football"
+                            }
+                        ]
+                    }
+                ]
+            }
+        ],
+        "containers": [
+            {
+                "name": "mainNav",
+                "styles": "border: 1px ",
+                "visible": true,
+                "cssClass": "col-md-12",
+                "data": {
+                    "some_extra_data": true
+                }
+            },
+            {
+                "name": "frontArticles"
+            }
+        ],
+        "widgets": [
+            {
+                "name": "NavigationMain",
+                "type": "SWP\\Bundle\\TemplatesSystemBundle\\Widget\\MenuWidgetHandler",
+                "visible": true,
+                "parameters": {
+                    "menu_name": "mainNavigation",
+                    "template_name": "menu1.html.twig"
+                },
+                "containers": ["mainNav"]
+            },
+            {
+                "name": "Automatic list widget",
+                "type": "SWP\\Bundle\\CoreBundle\\Widget\\ContentListWidget",
+                "visible": true,
+                "parameters": {
+                    "list_name": "Example automatic list"
+                },
+                "containers": ["frontArticles"]
+            }
+        ],
+        "contentLists": [
+            {
+                "name": "Example automatic list",
+                "type": "automatic",
+                "description": "New list",
+                "limit": 5,
+                "cacheLifeTime": 30,
+                "filters": "{\"metadata\":{\"located\":\"Porto\"}}"
+            }
+        ]
+    }
 }

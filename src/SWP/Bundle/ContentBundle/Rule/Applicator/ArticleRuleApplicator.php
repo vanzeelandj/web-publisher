@@ -14,14 +14,15 @@
 
 namespace SWP\Bundle\ContentBundle\Rule\Applicator;
 
-use Psr\Log\LoggerInterface;
+use SWP\Bundle\ContentBundle\ArticleEvents;
+use SWP\Bundle\ContentBundle\Event\ArticleEvent;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
 use SWP\Bundle\ContentBundle\Provider\RouteProviderInterface;
-use SWP\Bundle\ContentBundle\Service\ArticleServiceInterface;
 use SWP\Component\Rule\Applicator\AbstractRuleApplicator;
 use SWP\Component\Rule\Model\RuleSubjectInterface;
 use SWP\Component\Rule\Model\RuleInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 final class ArticleRuleApplicator extends AbstractRuleApplicator
@@ -32,9 +33,9 @@ final class ArticleRuleApplicator extends AbstractRuleApplicator
     private $routeProvider;
 
     /**
-     * @var ArticleServiceInterface
+     * @var EventDispatcherInterface
      */
-    private $articleService;
+    private $eventDispatcher;
 
     /**
      * @var array
@@ -44,18 +45,15 @@ final class ArticleRuleApplicator extends AbstractRuleApplicator
     /**
      * ArticleRuleApplicator constructor.
      *
-     * @param RouteProviderInterface  $routeProvider
-     * @param LoggerInterface         $logger
-     * @param ArticleServiceInterface $articleService
+     * @param RouteProviderInterface   $routeProvider
+     * @param EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
         RouteProviderInterface $routeProvider,
-        LoggerInterface $logger,
-        ArticleServiceInterface $articleService
+        EventDispatcherInterface $eventDispatcher
     ) {
         $this->routeProvider = $routeProvider;
-        $this->logger = $logger;
-        $this->articleService = $articleService;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     /**
@@ -89,7 +87,7 @@ final class ArticleRuleApplicator extends AbstractRuleApplicator
         $subject->setTemplateName($configuration['templateName']);
 
         if ((bool) $configuration['published']) {
-            $this->articleService->publish($subject);
+            $this->eventDispatcher->dispatch(ArticleEvents::PUBLISH, new ArticleEvent($subject, null, ArticleEvents::PUBLISH));
         }
 
         $this->logger->info(sprintf(

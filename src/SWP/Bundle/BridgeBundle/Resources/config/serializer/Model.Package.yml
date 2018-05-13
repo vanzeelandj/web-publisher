@@ -4,11 +4,14 @@ SWP\Component\Bridge\Model\Package:
         items:
             expose: true
             serialized_name: associations
-            type: ArrayCollection<string,SWP\Component\Bridge\Model\Item>
+            type: ArrayCollection<string, SWP\Component\Bridge\Model\Item>
         body:
             expose: true
             serialized_name: body_html
             type: string
+        createdAt:
+            expose: true
+            type: DateTime
         updatedAt:
             expose: true
             type: DateTime

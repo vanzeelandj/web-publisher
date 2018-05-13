@@ -19,6 +19,7 @@ use SWP\Bundle\CoreBundle\Form\Type\BooleanType;
 use SWP\Bundle\CoreBundle\Form\Type\OrganizationCodeChoiceType;
 use SWP\Bundle\CoreBundle\Form\Type\TenantType;
 use SWP\Bundle\CoreBundle\Form\Type\ThemeNameChoiceType;
+use SWP\Bundle\OutputChannelBundle\Form\Type\OutputChannelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\Form\FormTypeInterface;
@@ -57,10 +58,9 @@ class TenantTypeSpec extends ObjectBehavior
 
         $builder
             ->add('subdomain', TextType::class, [
-                'required' => true,
+                'required' => false,
                 'description' => 'Tenant subdomain',
                 'constraints' => [
-                    new NotBlank(),
                     new Length(['min' => 3]),
                 ],
             ])
@@ -69,9 +69,10 @@ class TenantTypeSpec extends ObjectBehavior
 
         $builder
             ->add('domainName', TextType::class, [
-                'required' => false,
+                'required' => true,
                 'description' => 'Tenant domain name',
                 'constraints' => [
+                    new NotBlank(),
                     new Length(['min' => 3]),
                 ],
             ])->willReturn($builder)
@@ -97,6 +98,14 @@ class TenantTypeSpec extends ObjectBehavior
             ->add('ampEnabled', BooleanType::class, [
                 'required' => false,
                 'description' => 'Defines whether Google AMP HTML support is enabled or not (true or false).',
+            ])
+            ->willReturn($builder)
+        ;
+
+        $builder
+            ->add('outputChannel', OutputChannelType::class, [
+                'required' => false,
+                'description' => 'Output Channel',
             ])
             ->willReturn($builder)
         ;

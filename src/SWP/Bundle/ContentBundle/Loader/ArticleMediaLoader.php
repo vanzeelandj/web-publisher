@@ -46,6 +46,8 @@ class ArticleMediaLoader extends PaginatedLoader implements LoaderInterface
      */
     protected $articleMediaProvider;
 
+    private $mediaCache = [];
+
     /**
      * ArticleMediaLoader constructor.
      *
@@ -53,35 +55,28 @@ class ArticleMediaLoader extends PaginatedLoader implements LoaderInterface
      * @param MetaFactory                   $metaFactory
      * @param Context                       $context
      */
-    public function __construct(
-        ArticleMediaProviderInterface $articleMediaProvider,
-        MetaFactory $metaFactory,
-        Context $context
-    ) {
+    public function __construct(ArticleMediaProviderInterface $articleMediaProvider, MetaFactory $metaFactory, Context $context)
+    {
         $this->articleMediaProvider = $articleMediaProvider;
         $this->metaFactory = $metaFactory;
         $this->context = $context;
     }
 
     /**
-     * Load meta object by provided type and parameters.
-     *
-     * @MetaLoaderDoc(
-     *     description="Article Media Loader loads article media from Content Repository",
-     *     parameters={
-     *         article="COLLECTION| article Meta object"
-     *     }
-     * )
-     *
-     * @param string $type         object type
-     * @param array  $parameters   parameters needed to load required object type
-     * @param int    $responseType response type: collection of meta (LoaderInterface::COLLECTION)
-     *
-     * @return Meta[]|bool false if meta cannot be loaded, an array with Meta instances otherwise
+     *  {@inheritdoc}
      */
-    public function load($type, $parameters = [], $responseType = LoaderInterface::COLLECTION)
+    public function load($type, $parameters = [], $withoutParameters = [], $responseType = LoaderInterface::COLLECTION)
     {
-        if ($responseType === LoaderInterface::COLLECTION) {
+        $extra = [];
+        if (array_key_exists('article', $parameters) && $parameters['article'] instanceof Meta) {
+            $extra[] = $parameters['article']->getValues()->getId();
+        }
+        $mediaKey = md5($type.json_encode([$parameters, $withoutParameters, $extra]).$responseType);
+        if (isset($this->mediaCache[$mediaKey])) {
+            return $this->mediaCache[$mediaKey];
+        }
+
+        if (LoaderInterface::COLLECTION === $responseType) {
             $criteria = new Criteria();
             $criteria->set('maxResults', null);
 
@@ -96,9 +91,7 @@ class ArticleMediaLoader extends PaginatedLoader implements LoaderInterface
             $criteria = $this->applyPaginationToCriteria($criteria, $parameters);
             $media = $criteria->get('article')->getMedia();
 
-            if (($media instanceof PersistentCollection
-                && $media->isInitialized())
-                || $media instanceof ArrayCollection) {
+            if (($media instanceof PersistentCollection && $media->isInitialized()) || $media instanceof ArrayCollection) {
                 $collectionCriteria = new \Doctrine\Common\Collections\Criteria(
                     null,
                     $criteria->get('order'),
@@ -118,6 +111,7 @@ class ArticleMediaLoader extends PaginatedLoader implements LoaderInterface
                 foreach ($media as $item) {
                     $metaCollection->add($this->metaFactory->create($item));
                 }
+                $this->mediaCache[$mediaKey] = $metaCollection;
 
                 return $metaCollection;
             }
@@ -135,6 +129,6 @@ class ArticleMediaLoader extends PaginatedLoader implements LoaderInterface
      */
     public function isSupported(string $type): bool
     {
-        return in_array($type, ['articleMedia']);
+        return in_array($type, ['articleMedia']) && !$this->context->isPreviewMode();
     }
 }

@@ -50,6 +50,8 @@ final class ThemeConfiguration implements ConfigurationInterface
         $this->addOptionalScreenshotsList($rootNodeDefinition);
         $this->addOptionalAuthorsList($rootNodeDefinition);
         $this->addOptionalConfig($rootNodeDefinition);
+        $this->addOptionalGeneratedData($rootNodeDefinition);
+        $this->addOptionalSettingsList($rootNodeDefinition);
 
         return $treeBuilder;
     }
@@ -118,6 +120,181 @@ final class ThemeConfiguration implements ConfigurationInterface
     /**
      * @param ArrayNodeDefinition $rootNodeDefinition
      */
+    private function addOptionalGeneratedData(ArrayNodeDefinition $rootNodeDefinition)
+    {
+        $generatedDataNodeDefinition = $rootNodeDefinition->children()->arrayNode('generatedData');
+        $this->addOptionalGeneratedRoutesData($generatedDataNodeDefinition);
+        $this->addOptionalGeneratedMenusData($generatedDataNodeDefinition);
+        $this->addOptionalGeneratedContainersData($generatedDataNodeDefinition);
+        $this->addOptionalGeneratedWidgetsData($generatedDataNodeDefinition);
+        $this->addOptionalGenerateContentListsData($generatedDataNodeDefinition);
+    }
+
+    /**
+     * @param ArrayNodeDefinition $generatedDataNodeDefinition
+     */
+    private function addOptionalGeneratedRoutesData(ArrayNodeDefinition $generatedDataNodeDefinition)
+    {
+        $routesNodeDefinition = $generatedDataNodeDefinition->children()->arrayNode('routes');
+        $routesNodeDefinition->requiresAtLeastOneElement();
+
+        /** @var ArrayNodeDefinition $routeNodeDefinition */
+        $routeNodeDefinition = $routesNodeDefinition->prototype('array');
+        $routeNodeDefinition
+            ->validate()
+            ->ifTrue(function ($route) {
+                return [] === $route;
+            })
+            ->thenInvalid('Route cannot be empty!')
+        ;
+
+        $routeNodeBuilder = $routeNodeDefinition->children();
+        $routeNodeBuilder->scalarNode('name')->cannotBeEmpty();
+        $routeNodeBuilder->scalarNode('slug')->cannotBeEmpty();
+        $routeNodeBuilder->scalarNode('type')->cannotBeEmpty();
+        $routeNodeBuilder->scalarNode('parent')->defaultNull();
+        $routeNodeBuilder->scalarNode('templateName')->defaultNull();
+        $routeNodeBuilder->scalarNode('articlesTemplateName')->defaultNull();
+        $routeNodeBuilder->scalarNode('numberOfArticles')->defaultNull();
+    }
+
+    /**
+     * @param ArrayNodeDefinition $generatedDataNodeDefinition
+     */
+    private function addOptionalGeneratedMenusData(ArrayNodeDefinition $generatedDataNodeDefinition)
+    {
+        $menusNodeDefinition = $generatedDataNodeDefinition->children()->arrayNode('menus');
+        $menusNodeDefinition->requiresAtLeastOneElement();
+
+        /** @var ArrayNodeDefinition $menuNodeDefinition */
+        $menuNodeDefinition = $menusNodeDefinition->prototype('array');
+        $menuNodeDefinition
+            ->validate()
+            ->ifTrue(function ($menu) {
+                return [] === $menu;
+            })
+            ->thenInvalid('Menu cannot be empty!')
+        ;
+
+        $menuNodeBuilder = $menuNodeDefinition->children();
+        $menuNodeBuilder->scalarNode('name')->cannotBeEmpty()->end();
+        $menuNodeBuilder->scalarNode('label')->cannotBeEmpty()->end();
+        $menuNodeBuilder->scalarNode('uri')->cannotBeEmpty()->end();
+        $menuNodeBuilder->scalarNode('route')->cannotBeEmpty()->defaultNull()->end();
+
+        // 1st level of children
+        $childrensNodeDefinition = $menuNodeBuilder->arrayNode('children');
+        /** @var ArrayNodeDefinition $childrenNodeDefinition */
+        $childrenNodeDefinition = $childrensNodeDefinition->prototype('array');
+        $childrenNodeDefinition
+            ->validate()
+            ->ifTrue(function ($menu) {
+                return [] === $menu;
+            })
+            ->thenInvalid('Menu cannot be empty!')
+        ;
+
+        $childrenNodeBuilder = $childrenNodeDefinition->children();
+        $childrenNodeBuilder->scalarNode('name')->cannotBeEmpty()->end();
+        $childrenNodeBuilder->scalarNode('label')->cannotBeEmpty()->end();
+        $childrenNodeBuilder->scalarNode('uri')->cannotBeEmpty()->end();
+        $childrenNodeBuilder->scalarNode('route')->cannotBeEmpty()->defaultNull()->end();
+
+        // 2nd level of children
+        $childrensChildrensNodeDefinition = $childrenNodeBuilder->arrayNode('children');
+        /** @var ArrayNodeDefinition $childrensChildrenNodeDefinition */
+        $childrensChildrenNodeDefinition = $childrensChildrensNodeDefinition->prototype('array');
+        $childrensChildrenNodeDefinition
+            ->validate()
+            ->ifTrue(function ($menu) {
+                return [] === $menu;
+            })
+            ->thenInvalid('Menu cannot be empty!')
+        ;
+
+        $childrenNodeBuilder = $childrensChildrenNodeDefinition->children();
+        $childrenNodeBuilder->scalarNode('name')->cannotBeEmpty()->end();
+        $childrenNodeBuilder->scalarNode('label')->cannotBeEmpty()->end();
+        $childrenNodeBuilder->scalarNode('uri')->cannotBeEmpty()->end();
+        $childrenNodeBuilder->scalarNode('route')->cannotBeEmpty()->defaultNull()->end();
+    }
+
+    /**
+     * @param ArrayNodeDefinition $generatedDataNodeDefinition
+     */
+    private function addOptionalGeneratedContainersData(ArrayNodeDefinition $generatedDataNodeDefinition)
+    {
+        $containersNodeDefinition = $generatedDataNodeDefinition->children()->arrayNode('containers');
+        $containersNodeDefinition->requiresAtLeastOneElement();
+
+        /** @var ArrayNodeDefinition $containerNodeDefinition */
+        $containerNodeDefinition = $containersNodeDefinition->prototype('array');
+        $containerNodeDefinition
+            ->validate()
+            ->ifTrue(function ($widget) {
+                return [] === $widget;
+            })
+            ->thenInvalid('Widget cannot be empty!')
+        ;
+
+        $widgetNodeBuilder = $containerNodeDefinition->children();
+        $widgetNodeBuilder->scalarNode('name')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->scalarNode('styles')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->booleanNode('visible')->defaultTrue()->end();
+        $widgetNodeBuilder->variableNode('data')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->scalarNode('cssClass')->cannotBeEmpty()->end();
+    }
+
+    private function addOptionalGenerateContentListsData(ArrayNodeDefinition $generatedDataNodeDefinition)
+    {
+        $containersNodeDefinition = $generatedDataNodeDefinition->children()->arrayNode('contentLists');
+        $containersNodeDefinition->requiresAtLeastOneElement();
+
+        /** @var ArrayNodeDefinition $containerNodeDefinition */
+        $containerNodeDefinition = $containersNodeDefinition->prototype('array');
+        $containerNodeDefinition
+            ->validate()
+            ->ifTrue(function ($widget) {
+                return [] === $widget;
+            })
+            ->thenInvalid('Content List cannot be empty!')
+        ;
+
+        $widgetNodeBuilder = $containerNodeDefinition->children();
+        $widgetNodeBuilder->scalarNode('name')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->scalarNode('type')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->scalarNode('description')->defaultNull()->end();
+        $widgetNodeBuilder->scalarNode('limit')->defaultNull()->end();
+        $widgetNodeBuilder->scalarNode('cacheLifeTime')->defaultNull()->end();
+        $widgetNodeBuilder->scalarNode('filters')->defaultNull()->end();
+    }
+
+    private function addOptionalGeneratedWidgetsData(ArrayNodeDefinition $generatedDataNodeDefinition)
+    {
+        $widgetsNodeDefinition = $generatedDataNodeDefinition->children()->arrayNode('widgets');
+        $widgetsNodeDefinition->requiresAtLeastOneElement();
+
+        /** @var ArrayNodeDefinition $menuNodeDefinition */
+        $widgetNodeDefinition = $widgetsNodeDefinition->prototype('array');
+        $widgetNodeDefinition
+            ->validate()
+            ->ifTrue(function ($widget) {
+                return [] === $widget;
+            })
+            ->thenInvalid('Widget cannot be empty!')
+        ;
+
+        $widgetNodeBuilder = $widgetNodeDefinition->children();
+        $widgetNodeBuilder->scalarNode('name')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->scalarNode('type')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->booleanNode('visible')->defaultTrue()->end();
+        $widgetNodeBuilder->variableNode('parameters')->cannotBeEmpty()->end();
+        $widgetNodeBuilder->arrayNode('containers')->requiresAtLeastOneElement()->prototype('scalar')->end();
+    }
+
+    /**
+     * @param ArrayNodeDefinition $rootNodeDefinition
+     */
     private function addOptionalScreenshotsList(ArrayNodeDefinition $rootNodeDefinition)
     {
         $screenshotsNodeDefinition = $rootNodeDefinition->children()->arrayNode('screenshots');
@@ -176,5 +353,38 @@ final class ThemeConfiguration implements ConfigurationInterface
         $authorNodeBuilder->scalarNode('email')->cannotBeEmpty();
         $authorNodeBuilder->scalarNode('homepage')->cannotBeEmpty();
         $authorNodeBuilder->scalarNode('role')->cannotBeEmpty();
+    }
+
+    /**
+     * @param ArrayNodeDefinition $rootNodeDefinition
+     */
+    private function addOptionalSettingsList(ArrayNodeDefinition $rootNodeDefinition)
+    {
+        $settingsNodeDefinition = $rootNodeDefinition->children()->arrayNode('settings');
+        $settingsNodeDefinition
+            ->requiresAtLeastOneElement()
+            ->performNoDeepMerging()
+        ;
+
+        /** @var ArrayNodeDefinition $settingNodeDefinition */
+        $settingNodeDefinition = $settingsNodeDefinition->prototype('array');
+        $settingNodeDefinition
+            ->validate()
+            ->ifTrue(function ($setting) {
+                return [] === $setting;
+            })
+            ->thenInvalid('Setting cannot be empty!')
+        ;
+
+        $settingNodeBuilder = $settingNodeDefinition->children();
+        $settingNodeBuilder->scalarNode('name')->cannotBeEmpty();
+        $settingNodeBuilder->scalarNode('label')->defaultNull();
+        $settingNodeBuilder->scalarNode('value')->cannotBeEmpty();
+        $settingNodeBuilder->scalarNode('type')->cannotBeEmpty();
+        $settingNodeBuilder->scalarNode('help')->defaultNull();
+        $optionsNodeDefinition = $settingNodeBuilder->arrayNode('options');
+        $optionsChildren = $optionsNodeDefinition->arrayPrototype()->children();
+        $optionsChildren->scalarNode('value')->cannotBeEmpty();
+        $optionsChildren->scalarNode('label')->cannotBeEmpty();
     }
 }

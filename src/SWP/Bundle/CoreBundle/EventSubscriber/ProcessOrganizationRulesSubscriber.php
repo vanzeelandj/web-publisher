@@ -16,6 +16,11 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\CoreBundle\EventSubscriber;
 
+use SWP\Bundle\CoreBundle\Matcher\RulesMatcherInterface;
+use SWP\Bundle\CoreBundle\Model\CompositePublishAction;
+use SWP\Bundle\CoreBundle\Model\PublishDestination;
+use SWP\Bundle\CoreBundle\Provider\PublishDestinationProviderInterface;
+use SWP\Bundle\CoreBundle\Service\ArticlePublisherInterface;
 use SWP\Bundle\MultiTenancyBundle\MultiTenancyEvents;
 use SWP\Component\Bridge\Events;
 use SWP\Component\Rule\Processor\RuleProcessorInterface;
@@ -36,17 +41,41 @@ class ProcessOrganizationRulesSubscriber implements EventSubscriberInterface
     private $eventDispatcher;
 
     /**
-     * ProcessArticleRulesSubscriber constructor.
+     * @var PublishDestinationProviderInterface
+     */
+    private $publishDestinationProvider;
+
+    /**
+     * @var ArticlePublisherInterface
+     */
+    private $articlePublisher;
+
+    /**
+     * @var RulesMatcherInterface
+     */
+    private $rulesMatcher;
+
+    /**
+     * ProcessOrganizationRulesSubscriber constructor.
      *
-     * @param RuleProcessorInterface   $ruleProcessor
-     * @param EventDispatcherInterface $eventDispatcher
+     * @param RuleProcessorInterface              $ruleProcessor
+     * @param EventDispatcherInterface            $eventDispatcher
+     * @param PublishDestinationProviderInterface $publishDestinationProvider
+     * @param ArticlePublisherInterface           $articlePublisher
+     * @param RulesMatcherInterface               $rulesMatcher
      */
     public function __construct(
         RuleProcessorInterface $ruleProcessor,
-        EventDispatcherInterface $eventDispatcher
+        EventDispatcherInterface $eventDispatcher,
+        PublishDestinationProviderInterface $publishDestinationProvider,
+        ArticlePublisherInterface $articlePublisher,
+        RulesMatcherInterface $rulesMatcher
     ) {
         $this->ruleProcessor = $ruleProcessor;
         $this->eventDispatcher = $eventDispatcher;
+        $this->publishDestinationProvider = $publishDestinationProvider;
+        $this->articlePublisher = $articlePublisher;
+        $this->rulesMatcher = $rulesMatcher;
     }
 
     /**
@@ -65,8 +94,38 @@ class ProcessOrganizationRulesSubscriber implements EventSubscriberInterface
      */
     public function processRules(GenericEvent $event)
     {
+        $package = $event->getSubject();
+        $destinationsCount = $this->publishDestinationProvider->countDestinationsByPackageGuid($package);
+
+        if (0 < $destinationsCount) {
+            $this->eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_DISABLE);
+            $result = $this->rulesMatcher->getMatchedRules($package);
+            $publishAction = new CompositePublishAction($this->createDestinations($result));
+
+            $this->articlePublisher->publish($package, $publishAction);
+            $this->eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_ENABLE);
+
+            return;
+        }
+
         $this->eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_DISABLE);
-        $this->ruleProcessor->process($event->getSubject());
+        $this->ruleProcessor->process($package);
         $this->eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_ENABLE);
+    }
+
+    private function createDestinations(array $result): array
+    {
+        $destinations = [];
+        foreach ((array) $result['tenants'] as $tenant) {
+            $destination = new PublishDestination();
+            $destination->setTenant($tenant['tenant']);
+            $destination->setRoute($tenant['route']);
+            $destination->setPublished($tenant['published']);
+            $destination->setFbia($tenant['fbia']);
+
+            $destinations[] = $destination;
+        }
+
+        return $destinations;
     }
 }

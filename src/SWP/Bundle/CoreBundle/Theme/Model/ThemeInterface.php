@@ -26,5 +26,65 @@ interface ThemeInterface extends BaseThemeInterface
     /**
      * @return $array
      */
-    public function getDefaultTemplates();
+    public function getDefaultTemplates(): array;
+
+    /**
+     * @return array
+     */
+    public function getRoutes(): array;
+
+    /**
+     * @return array
+     */
+    public function getMenus(): array;
+
+    /**
+     * @return array
+     */
+    public function getContainers(): array;
+
+    /**
+     * @return array
+     */
+    public function getWidgets(): array;
+
+    /**
+     * @return array
+     */
+    public function getContentLists(): array;
+
+    /**
+     * @return array
+     */
+    public function getSettings(): array;
+
+    /**
+     * @param array $settings
+     */
+    public function setSettings(array $settings): void;
+
+    /**
+     * @return \SplFileInfo|null
+     */
+    public function getLogo(): ?\SplFileInfo;
+
+    /**
+     * @param \SplFileInfo|null $file
+     */
+    public function setLogo(?\SplFileInfo $file): void;
+
+    /**
+     * @return bool
+     */
+    public function hasLogo(): bool;
+
+    /**
+     * @return string|null
+     */
+    public function getLogoPath(): ?string;
+
+    /**
+     * @param string|null $path
+     */
+    public function setLogoPath(?string $path): void;
 }

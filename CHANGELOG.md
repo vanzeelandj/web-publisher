@@ -1,25 +1,77 @@
 
-CHANGELOG for version <= 1.0.x
+CHANGELOG for version <= 1.4.x
 ==============================
 
-This changelog references the relevant changes (bug and security fixes) done
-in <= 1.0 minor versions.
+This changelog references the relevant changes (bug and security fixes) done in <= 1.1 minor versions.
 
 To get the diff for a specific change, go to https://github.com/superdesk/web-publisher/commit/XXX where XXX is the change hash
 
+* 1.4.0
+ * feature [#503] Added push integration/notification about newly created package based on WebSocket
+ * bug [#499] Fixed package preview when template is not set or does not exist
+ * bug [#494] Fixed article's slug line so it can handle chinese chars
+ * feature [#459] Added an option to preview an article before even publishing it
+
+* 1.3.0
+ * feature [#462] Added template widget
+ * bug [#460] Install assets when theme is installed
+ * feature [#458] Added redirect and notFound functions for twig templates
+ * feature [#454] Override existing rules by publish destinations
+ * improvement [#455] Added slug to article author - allow to load authors by slug
+ * feature [#455] Allow to create custom routes (variable prefix and requirements)
+ * feature [#451] Allowed to evaluate rules that match given package
+ * feature [#453] Implemented bulk updates - settings API
+ * feature [#447] Generate route's slug based on route's name if not provided by default
+ * feature [#445] Implemented a list of optional values to theme's settings
+ * feature [#444] Added an to get a single route by name and slug 
+ * feature [#441] Added an option to list articles' authors in Twig templates
+ * feature [#439] Added support for theme settings and logo upload
+ * feature [#436] Added support for ordering by articles page views in selected date range
+ * bug [#431] ignore www prefix in theme resolver
+ * feature [#429] Implemented articles loading by routes static prefix and allowing to load articles from route children's
+ * feature [#434] Add support for custom fields
+ * feature [#428] Added support for authors
+ * bug [#422] Eliminated rules regression, where tenant rules were not executed and refactored the way rules are handled.
+ * improvement [#427] Improved the way how the article slug is generated
+ * bug [#426] Allow different date time format when filtering articles by date range
+ * bug [#425] Fixed losing alt attribute in images body
+ * feature [#424] Added option to define in theme config elements (route, articles and more) to be generated on theme installation
+ * improvement [#423] Add slug field to route. It will be used for url generation instead name field
+ * feature [#420] Add option to order list by pageViews parameter
+ * feature [#420] Add statistics to articles. Collect page views and make them visible in template and api
+ * feature [#416] Add Webhooks system (with API) to publisher
+ 
+* 1.2.0
+ * feature [#394] Add "template_name" parameter to html widget
+ * feature [#393] Introduce "without" keyword for gimmelist and add refactor article sources to allow better filtering
+ * [BC Break] feature [#371] Handle article sources (Article source is now an array of sources instead of a string.)
+ * feature [#379] Add API endpoint for listing available widgets templates in current theme
+ * feature [#377] Add API endpoint for package update (pubStatus)
+ * [BC Break] fix [#376] Make domainName field required in tenant create API
+ * feature [#372] Add Liveblog widget, add external ESI renderer
+ * feature [#368] Add Content List Loader
+
+* 1.1.0
+ * feature [#364] Add two new user settings
+ * improvement [#360] Allow multiple routes filtering in articles loader
+ * improvement [#359] Allow removing about field content in user profile
+ * fix [#353] Fix content list issue when publishing item
+ * improvement [#352] Add caching to static theme assets
+ * fix [#350] Add genre property to NINJS schema validator 
+
 * 1.0.1
- * [feature][RuleBundle] Implemented name and description fields in Rules API 
+ * feature [RuleBundle] Implemented name and description fields in Rules API 
 
 * 1.0.0
- * [fix] adding article to content lists on publish (#349)
-142561c set default value for urgency, handle genre as array in package item
- * [feature] ElasticSearch integration & bugfixes (#336)
-0544e35 Use organization instead tenant in user entity
- * [feature] [UserBundle] add API to promote and demote users (add/remove user roles)
- * [feature] Add articles count to tenant and article api endpoints
- * [feature] Add loader for content list items
- * [feature] [UserBundle][CoreBundle] add user profile update and get API, add option to set tenant from console command with optional argument
- * [feature] [Content Bundle] add option to filter articles by criteria
+ * fix Adding article to content lists on publish (#349)
+ * fix Set default value for urgency, handle genre as array in package item
+ * feature ElasticSearch integration & bugfixes (#336)
+ * feature Use organization instead tenant in user entity
+ * feature [UserBundle] add API to promote and demote users (add/remove user roles)
+ * feature Add articles count to tenant and article api endpoints
+ * feature Add loader for content list items
+ * feature [UserBundle][CoreBundle] add user profile update and get API, add option to set tenant from console command with optional argument
+ * feature [Content Bundle] add option to filter articles by criteria
  
  Full list of commits: https://github.com/superdesk/web-publisher/compare/cd75f77...046da8f
 

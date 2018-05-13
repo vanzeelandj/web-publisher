@@ -16,9 +16,10 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\ContentBundle\Loader;
 
+use SWP\Bundle\ContentBundle\Model\RouteRepositoryInterface;
+use SWP\Component\Common\Criteria\Criteria;
 use SWP\Component\TemplatesSystem\Gimme\Factory\MetaFactoryInterface;
 use SWP\Component\TemplatesSystem\Gimme\Loader\LoaderInterface;
-use SWP\Component\TemplatesSystem\Gimme\Meta\Meta;
 
 /**
  * Class RouteLoader.
@@ -33,34 +34,51 @@ class RouteLoader implements LoaderInterface
     protected $metaFactory;
 
     /**
+     * @var RouteRepositoryInterface
+     */
+    protected $routeRepository;
+
+    /**
+     * @var array
+     */
+    protected $supportedParameters = ['name', 'slug', 'parent'];
+
+    /**
      * RouteLoader constructor.
      *
-     * @param MetaFactoryInterface $metaFactory
+     * @param MetaFactoryInterface     $metaFactory
+     * @param RouteRepositoryInterface $routeRepository
      */
-    public function __construct(MetaFactoryInterface $metaFactory)
+    public function __construct(MetaFactoryInterface $metaFactory, RouteRepositoryInterface $routeRepository)
     {
         $this->metaFactory = $metaFactory;
+        $this->routeRepository = $routeRepository;
     }
 
     /**
-     * Load meta object by provided type and parameters.
-     *
-     * @MetaLoaderDoc(
-     *     description="Article Loader loads articles from Content Repository",
-     *     parameters={
-     *         route_object="SINGLE|required route object"
-     *     }
-     * )
-     *
-     * @param string $type         object type
-     * @param array  $parameters   parameters needed to load required object type
-     * @param int    $responseType response type: single meta (LoaderInterface::SINGLE)
-     *
-     * @return Meta|bool false if meta cannot be loaded, a Meta instance otherwise
+     *  {@inheritdoc}
      */
-    public function load($type, $parameters = [], $responseType = LoaderInterface::SINGLE)
+    public function load($type, $parameters = [], $withoutParameters = [], $responseType = LoaderInterface::SINGLE)
     {
         $route = isset($parameters['route_object']) ? $parameters['route_object'] : null;
+
+        if (null === $route) {
+            if (empty($parameters)) {
+                return false;
+            }
+
+            $criteria = new Criteria();
+            foreach ($this->supportedParameters as $supportedParameter) {
+                if (array_key_exists($supportedParameter, $parameters)) {
+                    $criteria->set($supportedParameter, $parameters[$supportedParameter]);
+                }
+            }
+
+            $route = $this->routeRepository->getQueryByCriteria($criteria, [], 'r')
+                ->setMaxResults(1)
+                ->getQuery()
+                ->getOneOrNullResult();
+        }
 
         if (null !== $route) {
             return $this->metaFactory->create($route);

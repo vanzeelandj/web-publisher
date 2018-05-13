@@ -31,12 +31,13 @@ class Version20170221091231 extends AbstractMigration implements ContainerAwareI
     public function up(Schema $schema)
     {
         // this up() migration is auto-generated, please modify it to your needs
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
-        $tenantRepository = $this->container->get('swp.repository.tenant');
         $revisionRepository = $this->container->get('swp.repository.revision');
         $revisionFactory = $this->container->get('swp.factory.revision');
-        $tenants = $tenantRepository->findAll();
+        $query = $this->container->get('doctrine.orm.default_entity_manager')
+            ->createQuery('SELECT t FROM SWP\Bundle\CoreBundle\Model\Tenant t');
+        $tenants = $query->getResult();
         $revisionManager = $this->container->get('swp.manager.revision');
         foreach ($tenants as $tenant) {
             $existingRevision = $this->container->get('swp.repository.revision')
@@ -68,7 +69,7 @@ class Version20170221091231 extends AbstractMigration implements ContainerAwareI
     public function down(Schema $schema)
     {
         // this down() migration is auto-generated, please modify it to your needs
-        $this->abortIf($this->connection->getDatabasePlatform()->getName() !== 'postgresql', 'Migration can only be executed safely on \'postgresql\'.');
+        $this->abortIf('postgresql' !== $this->connection->getDatabasePlatform()->getName(), 'Migration can only be executed safely on \'postgresql\'.');
 
         $this->addSql('ALTER TABLE swp_container DROP CONSTRAINT FK_CF0E49301DFA7C8F');
         $this->addSql('ALTER TABLE swp_revision_log DROP CONSTRAINT FK_A1F96AFD9AC03385');

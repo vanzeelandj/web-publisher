@@ -16,7 +16,7 @@ Full documentation can be found here: [http://superdesk-publisher.readthedocs.or
 
 ## Requirements
 
- * PHP >= 7.0
+ * PHP >= 7.1
    * iconv needs to be enabled
    * Intl needs to be installed with ICU 4+
    * pdo needs to be enabled
@@ -38,10 +38,15 @@ Full documentation can be found here: [http://superdesk-publisher.readthedocs.or
    * memcached (running)
    * php-memcached
  * ElasticSearch >= 5.4
+ * RabbitMQ >= 3.5
+    * php-bcmath
+ * Supervisor
+ * ZeroMQ
+    * php-zmq extension (`pecl install zmq-beta`)
 
 ## Installation
 
-See [installation guide](install.md) for more details.
+See [installation guide](INSTALL.md) for more details.
 
 [1]: http://superdesk-publisher.readthedocs.org/en/latest/
 [2]: https://www.sourcefabric.org/en/newscoop/

@@ -36,9 +36,9 @@ class ContentControllerTest extends WebTestCase
         $crawler = $client->request('GET', '/news/features');
 
         $this->assertEquals(200, $client->getResponse()->getStatusCode());
-        $this->assertTrue($crawler->filter('html:contains("Features")')->count() === 1);
-        $this->assertTrue($crawler->filter('html:contains("Content:")')->count() === 1);
-        $this->assertTrue($crawler->filter('html:contains("Current tenant: Default tenant")')->count() === 1);
+        $this->assertTrue(1 === $crawler->filter('html:contains("Features")')->count());
+        $this->assertTrue(1 === $crawler->filter('html:contains("Content:")')->count());
+        $this->assertTrue(1 === $crawler->filter('html:contains("Current tenant: Default tenant")')->count());
     }
 
     public function testLoadingNotExistingArticleUnderContainerPage()
@@ -56,9 +56,11 @@ class ContentControllerTest extends WebTestCase
         $this->loadCustomFixtures(['tenant', 'collection_route']);
 
         $client = static::createClient();
-        $client->request('GET', '/collection-no-template');
+        $client->enableProfiler();
+        $crawler = $client->request('GE:T', '/collection-no-template');
 
-        $this->assertEquals(404, $client->getResponse()->getStatusCode());
+        self::assertEquals(200, $client->getResponse()->getStatusCode());
+        self::assertContains('This is default "category.html.twig" template file.', $client->getResponse()->getContent());
     }
 
     public function testLoadingCollectionRouteWithArticles()
@@ -115,7 +117,8 @@ class ContentControllerTest extends WebTestCase
         $client = static::createClient();
 
         $client->request('GET', '/collection-content');
-        $this->assertEquals(404, $client->getResponse()->getStatusCode());
+        self::assertEquals(200, $client->getResponse()->getStatusCode());
+        self::assertContains('This is default "category.html.twig" template file.', $client->getResponse()->getContent());
     }
 
     public function testTestLoadingRouteWithCustomTemplate()
@@ -135,13 +138,83 @@ class ContentControllerTest extends WebTestCase
         ]);
 
         $this->assertEquals(201, $client->getResponse()->getStatusCode());
-        $this->assertEquals('{"id":3,"content":null,"staticPrefix":"\/simple-test-route","variablePattern":null,"root":3,"parent":null,"children":[],"level":0,"templateName":"test.html.twig","articlesTemplateName":null,"type":"content","cacheTimeInSeconds":0,"name":"simple-test-route","position":1,"articlesCount":0,"_links":{"self":{"href":"\/api\/v1\/content\/routes\/3"}}}', $client->getResponse()->getContent());
+        $this->assertEquals('{"requirements":[],"id":3,"content":null,"staticPrefix":"\/simple-test-route","variablePattern":null,"root":3,"parent":null,"children":[],"level":0,"templateName":"test.html.twig","articlesTemplateName":null,"type":"content","cacheTimeInSeconds":0,"name":"simple-test-route","slug":"simple-test-route","position":1,"articlesCount":0,"_links":{"self":{"href":"\/api\/v1\/content\/routes\/3"}}}', $client->getResponse()->getContent());
 
         $crawler = $client->request('GET', '/simple-test-route');
         $this->assertEquals(200, $client->getResponse()->getStatusCode());
 
         // Check that route id is in the rendered html - accessed through {% gimme.route.id %}
-        $this->assertTrue($crawler->filter('html:contains("3")')->count() === 1);
+        $this->assertTrue(1 === $crawler->filter('html:contains("3")')->count());
+    }
+
+    public function testLoadingArticlesOrderedByPageViews()
+    {
+        $this->loadCustomFixtures(['tenant', 'article']);
+
+        $router = $this->getContainer()->get('router');
+        $client = static::createClient();
+        $client->request('PATCH', $router->generate('swp_api_content_update_routes', ['id' => 3]), [
+            'route' => [
+                'templateName' => 'articles_by_pageviews.html.twig',
+            ],
+        ]);
+
+        $expected = <<<'EOT'
+Articles by page views count desc
+    <a href="http://localhost/news/test-news-article">Test news article</a> Page views count: 20
+    <a href="http://localhost/news/test-article">Test article</a> Page views count: 10
+    <a href="http://localhost/news/features">Features</a> Page views count: 5
+
+    <a href="http://localhost/news/features">Features</a>
+    <a href="http://localhost/news/test-article">Test article</a>
+    <a href="http://localhost/news/test-news-article">Test news article</a>
+
+EOT;
+
+        $client->request('GET', '/news');
+        self::assertTrue($client->getResponse()->isSuccessful());
+        self::assertEquals($expected, $client->getResponse()->getContent());
+    }
+
+    public function testLoadingArticlesOrderedByPageViewsInRange()
+    {
+        $this->loadCustomFixtures(['tenant', 'article']);
+
+        $router = $this->getContainer()->get('router');
+        $client = static::createClient();
+        $client->request('PATCH', $router->generate('swp_api_content_update_routes', ['id' => 3]), [
+            'route' => [
+                'templateName' => 'articles_by_pageviews_in_date_range.html.twig',
+            ],
+        ]);
+
+        $expected = <<<'EOT'
+Articles by page views in last 7 days
+    <a href="http://localhost/news/sports/test-news-sports-article">Test news sports article</a> Page views count: 30
+    <a href="http://localhost/news/test-news-article">Test news article</a> Page views count: 20
+    <a href="http://localhost/news/test-article">Test article</a> Page views count: 10
+    <a href="http://localhost/news/features">Features</a> Page views count: 5
+    <a href="http://localhost/articles-features?slug=features-client1">Features client1</a> Page views count: 0
+
+Articles by page views in between 3 and 7 days ago
+    <a href="http://localhost/news/sports/test-news-sports-article">Test news sports article</a>
+    <a href="http://localhost/news/test-news-article">Test news article</a>
+    <a href="http://localhost/news/features">Features</a>
+    <a href="http://localhost/news/test-article">Test article</a>
+    <a href="http://localhost/articles-features?slug=features-client1">Features client1</a>
+
+Articles by page views from yesterday
+    <a href="http://localhost/news/test-news-article">Test news article</a>
+    <a href="http://localhost/news/sports/test-news-sports-article">Test news sports article</a>
+    <a href="http://localhost/news/test-article">Test article</a>
+    <a href="http://localhost/news/features">Features</a>
+    <a href="http://localhost/articles-features?slug=features-client1">Features client1</a>
+
+EOT;
+
+        $client->request('GET', '/news');
+        self::assertTrue($client->getResponse()->isSuccessful());
+        self::assertEquals($expected, $client->getResponse()->getContent());
     }
 
     public function testTestLoadingRouteWithCustomArticlesTemplate()
@@ -161,7 +234,8 @@ class ContentControllerTest extends WebTestCase
         $router = $this->getContainer()->get('router');
         $client->request('POST', $router->generate('swp_api_content_create_routes'), [
             'route' => [
-                'name' => 'feed/sitemap.rss',
+                'name' => 'Sitemap',
+                'slug' => 'feed/sitemap.rss',
                 'type' => 'content',
             ],
         ]);

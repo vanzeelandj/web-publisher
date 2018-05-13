@@ -8,7 +8,7 @@ parameters:
     env(DATABASE_USER): root
     env(DATABASE_PASSWORD): ~
     # your postgres/mysql server version
-    server_version:    9
+    env(DATABASE_SERVER_VERSION): 9
     # You should uncomment this if you want use pdo_sqlite
     # database_path: "%kernel.root_dir%/data.db3"
 
@@ -17,15 +17,12 @@ parameters:
     mailer_user:       ~
     mailer_password:   ~
 
-    # A secret key that's used to generate certain security-related tokens
-    secret: "%env(SYMFONY_SECRET)%"
     env(SYMFONY_SECRET): 'SuperSecretTokenPleaseChangeIt'
     swp_updater.version.class: "SWP\\Bundle\\CoreBundle\\Version\\Version"
-    domain: "%env(SWP_DOMAIN)%"
-    env(SWP_DOMAIN): wps.dev
+    env(SWP_DOMAIN): localhost
     # Array of caching servers
     cache_servers:
-        - wps.dev
+        - localhost
     doctrine_cache_driver: "array"
 
     sentry.dsn: false
@@ -41,9 +38,14 @@ parameters:
     superdesk_servers:
         - https://superdesk.dev
 
-    # Array of trusted proxies
-    trusted_proxies:
-        - 192.0.0.1
-        - 10.0.0.0/8
     env(ELASTICA_HOST): localhost
     env(ELASTICA_PORT): 9200
+    env(ELASTICA_INDEX_NAME): 'swp_index'
+
+    env(RABBIT_MQ_HOST): 127.0.0.1
+    env(RABBIT_MQ_PORT): 5672
+    env(RABBIT_MQ_USER): guest
+    env(RABBIT_MQ_PASSWORD): guest
+
+    env(WEBSOCKET_PORT): 8080
+    env(WEBSOCKET_HOST): 127.0.0.1

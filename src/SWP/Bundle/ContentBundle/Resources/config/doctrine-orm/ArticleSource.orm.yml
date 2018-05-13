@@ -1,0 +1,30 @@
+SWP\Bundle\ContentBundle\Model\ArticleSource:
+    type: mappedSuperclass
+    table: swp_article_source
+    id:
+        id:
+            type: integer
+            id: true
+            generator:
+                strategy: IDENTITY
+    gedmo:
+        loggable: true
+    fields:
+        name:
+            type: string
+        createdAt:
+            type: datetime
+            gedmo:
+                timestampable:
+                    on: create
+        updatedAt:
+            type: datetime
+            nullable: true
+            gedmo:
+                timestampable:
+                    on: update
+    oneToMany:
+        sources:
+            targetEntity: SWP\Bundle\ContentBundle\Model\ArticleSourceReference
+            mappedBy: articleSource
+            cascade: ["remove"]

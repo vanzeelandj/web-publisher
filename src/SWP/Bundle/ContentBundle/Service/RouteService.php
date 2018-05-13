@@ -14,11 +14,15 @@
 
 namespace SWP\Bundle\ContentBundle\Service;
 
+use Behat\Transliterator\Transliterator;
 use SWP\Bundle\ContentBundle\Event\RouteEvent;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
 use SWP\Bundle\ContentBundle\RouteEvents;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 
+/**
+ * Class RouteService.
+ */
 class RouteService implements RouteServiceInterface
 {
     /**
@@ -64,11 +68,6 @@ class RouteService implements RouteServiceInterface
         return $route;
     }
 
-    private function dispatchRouteEvent($eventName, RouteInterface $route)
-    {
-        $this->eventDispatcher->dispatch($eventName, new RouteEvent($route));
-    }
-
     /**
      * @param RouteInterface $route
      *
@@ -76,6 +75,10 @@ class RouteService implements RouteServiceInterface
      */
     public function fillRoute(RouteInterface $route)
     {
+        if (null === $route->getSlug()) {
+            $route->setSlug(Transliterator::urlize($route->getName()));
+        }
+
         switch ($route->getType()) {
             case RouteInterface::TYPE_CONTENT:
                 $route->setVariablePattern(null);
@@ -86,8 +89,12 @@ class RouteService implements RouteServiceInterface
             case RouteInterface::TYPE_COLLECTION:
                 $route->setVariablePattern('/{slug}');
                 $route->setStaticPrefix($this->generatePath($route));
-                $route->setRequirement('slug', '[a-zA-Z0-9*\-_\/]+');
+                $route->setRequirement('slug', '[a-zA-Z0-9*\-_]+');
                 $route->setDefault('slug', null);
+
+                break;
+            case RouteInterface::TYPE_CUSTOM:
+                $route->setStaticPrefix($this->generatePath($route));
 
                 break;
             default:
@@ -104,10 +111,21 @@ class RouteService implements RouteServiceInterface
      */
     protected function generatePath(RouteInterface $route)
     {
+        $slug = $route->getSlug();
+
         if (null === $parent = $route->getParent()) {
-            return '/'.$route->getName();
+            return '/'.$slug;
         }
 
-        return sprintf('%s/%s', $parent->getStaticPrefix(), $route->getName());
+        return sprintf('%s/%s', $parent->getStaticPrefix(), $slug);
+    }
+
+    /**
+     * @param string         $eventName
+     * @param RouteInterface $route
+     */
+    private function dispatchRouteEvent($eventName, RouteInterface $route)
+    {
+        $this->eventDispatcher->dispatch($eventName, new RouteEvent($route, $eventName));
     }
 }

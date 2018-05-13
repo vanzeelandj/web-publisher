@@ -52,9 +52,10 @@ final class AmpSupportChecker implements AmpSupportCheckerInterface
         /** @var TenantInterface $tenant */
         $tenant = $this->tenantContext->getTenant();
         $request = $this->requestStack->getCurrentRequest();
+        if (!$tenant->isAmpEnabled()) {
+            return false;
+        }
 
-        return $request->attributes->has(RouteEnhancer::ARTICLE_META)
-            && null !== $request->attributes->get(RouteEnhancer::ARTICLE_META)
-            && $tenant->isAmpEnabled();
+        return null !== $request->attributes->get(RouteEnhancer::ARTICLE_META, null) || 'swp_package_preview' === $request->attributes->get('_route');
     }
 }

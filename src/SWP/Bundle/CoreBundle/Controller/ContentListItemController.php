@@ -15,7 +15,6 @@
 namespace SWP\Bundle\CoreBundle\Controller;
 
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Cache;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use SWP\Bundle\ContentListBundle\Form\Type\ContentListItemsType;
@@ -79,8 +78,6 @@ class ContentListItemController extends Controller
      * )
      * @Route("/api/{version}/content/lists/{listId}/items/{id}", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_core_show_lists_item", requirements={"id"="\d+"})
      * @Method("GET")
-     *
-     * @Cache(expires="10 minutes", public=true)
      */
     public function getAction($listId, $id)
     {
@@ -181,6 +178,7 @@ class ContentListItemController extends Controller
                         $contentListItem->setPosition($item['position']);
                         $list->setUpdatedAt(new \DateTime('now'));
                         $objectManager->flush();
+
                         break;
                     case 'add':
                         $object = $this->get('swp.repository.article')->findOneById($item['content_id']);
@@ -189,12 +187,14 @@ class ContentListItemController extends Controller
                         $objectManager->persist($contentListItem);
                         $list->setUpdatedAt(new \DateTime('now'));
                         $objectManager->flush();
+
                         break;
                     case 'delete':
                         $contentListItem = $this->findByContentOr404($list, $item['content_id']);
                         $objectManager->remove($contentListItem);
                         $list->setUpdatedAt(new \DateTime('now'));
                         $objectManager->flush();
+
                         break;
                 }
             }
@@ -211,7 +211,7 @@ class ContentListItemController extends Controller
         ]);
 
         if (null === $listItem) {
-            throw new NotFoundHttpException(sprintf('Content list item with content_id "%s" was not found.', $contentId));
+            throw new NotFoundHttpException(sprintf('Content list item with content_id "%s" was not found on that list. If You want to add new item - use action type "add".', $contentId));
         }
 
         return $listItem;

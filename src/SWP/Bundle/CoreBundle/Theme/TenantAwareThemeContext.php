@@ -15,17 +15,17 @@
 namespace SWP\Bundle\CoreBundle\Theme;
 
 use Doctrine\Common\Cache\CacheProvider;
-use SWP\Bundle\CoreBundle\Exception\NoThemeException;
 use SWP\Bundle\CoreBundle\Theme\Helper\ThemeHelper;
+use SWP\Bundle\CoreBundle\Theme\Repository\ReloadableThemeRepositoryInterface;
 use SWP\Component\Common\Model\ThemeAwareTenantInterface;
 use SWP\Component\MultiTenancy\Context\TenantContextInterface;
-use Sylius\Bundle\ThemeBundle\Context\ThemeContextInterface;
+use Sylius\Bundle\ThemeBundle\Model\ThemeInterface;
 use Sylius\Bundle\ThemeBundle\Repository\ThemeRepositoryInterface;
 
 /**
  * Class TenantAwareThemeContext.
  */
-final class TenantAwareThemeContext implements ThemeContextInterface
+final class TenantAwareThemeContext implements TenantAwareThemeContextInterface
 {
     /**
      * @var TenantContextInterface
@@ -33,7 +33,7 @@ final class TenantAwareThemeContext implements ThemeContextInterface
     private $tenantContext;
 
     /**
-     * @var ThemeRepositoryInterface
+     * @var ReloadableThemeRepositoryInterface
      */
     private $themeRepository;
 
@@ -54,11 +54,8 @@ final class TenantAwareThemeContext implements ThemeContextInterface
      * @param ThemeRepositoryInterface $themeRepository Theme repository
      * @param CacheProvider            $cacheService    Cache Service
      */
-    public function __construct(
-        TenantContextInterface $tenantContext,
-        ThemeRepositoryInterface $themeRepository,
-        CacheProvider $cacheService
-    ) {
+    public function __construct(TenantContextInterface $tenantContext, ThemeRepositoryInterface $themeRepository, CacheProvider $cacheService)
+    {
         $this->tenantContext = $tenantContext;
         $this->themeRepository = $themeRepository;
         $this->cacheService = $cacheService;
@@ -68,15 +65,15 @@ final class TenantAwareThemeContext implements ThemeContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getTheme()
+    public function getTheme(): ?ThemeInterface
     {
         /* @var ThemeAwareTenantInterface $tenant */
         $tenant = $this->tenantContext->getTenant();
         if (null === $tenant) {
-            return;
+            return null;
         }
 
-        $key = md5($tenant->getCode());
+        $key = md5($tenant->getCode().$tenant->getThemeName());
         if (array_key_exists($key, $this->themes)) {
             return $this->themes[$key];
         }
@@ -85,11 +82,16 @@ final class TenantAwareThemeContext implements ThemeContextInterface
             return $this->themes[$key] = $this->cacheService->fetch('theme_'.$key);
         }
 
-        $theme = $this->themeRepository->findOneByName($this->resolveThemeName($tenant));
+        $themeName = $this->resolveThemeName($tenant);
+        if (null === $themeName) {
+            return null;
+        }
+
+        $theme = $this->themeRepository->findOneByName($themeName);
         unset($tenant);
 
         if (null === $theme) {
-            throw new NoThemeException();
+            return null;
         }
 
         $this->themes[$key] = $theme;
@@ -98,9 +100,15 @@ final class TenantAwareThemeContext implements ThemeContextInterface
         return $theme;
     }
 
-    private function resolveThemeName(ThemeAwareTenantInterface $tenant)
+    /**
+     * {@inheritdoc}
+     */
+    public function resolveThemeName(ThemeAwareTenantInterface $tenant, string $themeName = null): ?string
     {
-        $themeName = $tenant->getThemeName();
+        if (null === $themeName) {
+            $themeName = $tenant->getThemeName();
+        }
+
         if (null !== $themeName) {
             return $tenant->getThemeName().ThemeHelper::SUFFIX_SEPARATOR.$tenant->getCode();
         }

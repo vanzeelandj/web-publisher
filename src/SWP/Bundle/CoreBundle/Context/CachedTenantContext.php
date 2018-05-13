@@ -15,13 +15,26 @@
 namespace SWP\Bundle\CoreBundle\Context;
 
 use Doctrine\Common\Cache\Cache;
+use Doctrine\ORM\EntityManager;
+use SWP\Bundle\CoreBundle\Model\Route;
 use SWP\Bundle\MultiTenancyBundle\Context\TenantContext;
+use SWP\Component\MultiTenancy\Model\TenantInterface;
 use SWP\Component\MultiTenancy\Resolver\TenantResolverInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 
-class CachedTenantContext extends TenantContext
+class CachedTenantContext extends TenantContext implements CachedTenantContextInterface
 {
+    /**
+     * @var Cache
+     */
+    protected $cacheProvider;
+
+    /**
+     * @var EntityManager
+     */
+    protected $entityManager;
+
     /**
      * CachedTenantContext constructor.
      *
@@ -29,17 +42,15 @@ class CachedTenantContext extends TenantContext
      * @param RequestStack             $requestStack
      * @param EventDispatcherInterface $dispatcher
      * @param Cache                    $cacheProvider
+     * @param EntityManager            $entityManager
      */
-    public function __construct(
-        TenantResolverInterface $tenantResolver,
-        RequestStack $requestStack,
-        EventDispatcherInterface $dispatcher,
-        Cache $cacheProvider
-    ) {
+    public function __construct(TenantResolverInterface $tenantResolver, RequestStack $requestStack, EventDispatcherInterface $dispatcher, Cache $cacheProvider, EntityManager $entityManager)
+    {
         $this->tenantResolver = $tenantResolver;
         $this->requestStack = $requestStack;
         $this->dispatcher = $dispatcher;
         $this->cacheProvider = $cacheProvider;
+        $this->entityManager = $entityManager;
     }
 
     /**
@@ -50,9 +61,14 @@ class CachedTenantContext extends TenantContext
         if (null === $this->tenant) {
             $currentRequest = $this->requestStack->getCurrentRequest();
             if (null !== $currentRequest) {
-                $cacheKey = md5($currentRequest->getHost());
+                $cacheKey = self::getCacheKey($currentRequest->getHost());
                 if ($this->cacheProvider->contains($cacheKey)) {
-                    $this->setTenant($this->cacheProvider->fetch($cacheKey));
+                    $tenant = $this->cacheProvider->fetch($cacheKey);
+                    // solution for Symfony Route heavy serialization
+                    if (null !== $tenant->getHomepage()) {
+                        $tenant->setHomepage($this->entityManager->find(Route::class, $tenant->getHomepage()->getId()));
+                    }
+                    $this->setTenant($tenant);
                 } else {
                     $tenant = $this->tenantResolver->resolve(
                         $currentRequest ? $currentRequest->getHost() : null
@@ -64,5 +80,26 @@ class CachedTenantContext extends TenantContext
         }
 
         return $this->tenant;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setTenant(TenantInterface $tenant)
+    {
+        parent::setTenant($tenant);
+        $host = $tenant->getDomainName();
+        if ($subdomain = $tenant->getSubdomain()) {
+            $host = $subdomain.'.'.$host;
+        }
+        $this->cacheProvider->delete(self::getCacheKey($host));
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public static function getCacheKey($host)
+    {
+        return 'tenant_cache__'.$host;
     }
 }

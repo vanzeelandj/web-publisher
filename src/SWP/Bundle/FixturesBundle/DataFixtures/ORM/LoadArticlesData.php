@@ -17,9 +17,13 @@ namespace SWP\Bundle\FixturesBundle\DataFixtures\ORM;
 use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\Common\DataFixtures\OrderedFixtureInterface;
 use Doctrine\Common\Persistence\ObjectManager;
+use SWP\Bundle\AnalyticsBundle\Model\ArticleStatisticsInterface;
+use SWP\Bundle\ContentBundle\Model\ArticleAuthor;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\ImageRendition;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
+use SWP\Bundle\CoreBundle\Model\ArticleEvent;
+use SWP\Bundle\CoreBundle\Model\ArticleEventInterface;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\FixturesBundle\AbstractFixture;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -171,11 +175,17 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
                     'name' => 'articles/features',
                     'type' => 'content',
                 ],
+                [
+                    'name' => 'sports',
+                    'type' => 'collection',
+                    'parentName' => 'news',
+                ],
             ],
         ];
 
         $routeService = $this->container->get('swp.service.route');
 
+        $persistedRoutes = [];
         foreach ($routes[$env] as $routeData) {
             /** @var RouteInterface $route */
             $route = $this->container->get('swp.factory.route')->create();
@@ -194,9 +204,14 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
                 $route->setArticlesTemplateName($routeData['articlesTemplateName']);
             }
 
+            if (isset($routeData['parentName']) && isset($persistedRoutes[$routeData['parentName']])) {
+                $route->setParent($persistedRoutes[$routeData['parentName']]);
+            }
+
             $route = $routeService->fillRoute($route);
 
             $manager->persist($route);
+            $persistedRoutes[$route->getName()] = $route;
         }
 
         $manager->flush();
@@ -208,7 +223,7 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
      */
     public function loadArticles($env, ObjectManager $manager)
     {
-        if ($env !== 'test') {
+        if ('test' !== $env) {
             $this->loadFixtures([
                 '@SWPFixturesBundle/Resources/fixtures/ORM/'.$env.'/package.yml',
             ],
@@ -346,30 +361,96 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
                     'content' => 'Test news article content',
                     'route' => 'news',
                     'locale' => 'en',
+                    'pageViews' => 20,
+                    'pageViewsDates' => [
+                        '-1 day' => 3,
+                        '-2 days' => 2,
+                        '-3 days' => 3,
+                        '-4 days' => 1,
+                        '-5 days' => 6,
+                        '-6 days' => 1,
+                        '-7 days' => 4,
+                    ],
+                    'extra' => [
+                        'custom-field' => 'my custom field',
+                    ],
+                    'authors' => [
+                        'Tom',
+                    ],
+                    'sources' => ['Forbes', 'AAP'],
+                ],
+                [
+                    'title' => 'Test news sports article',
+                    'content' => 'Test news sports article content',
+                    'route' => 'sports',
+                    'locale' => 'en',
+                    'pageViews' => 30,
+                    'pageViewsDates' => [
+                        '-1 day' => 3,
+                        '-2 days' => 2,
+                        '-3 days' => 8,
+                        '-4 days' => 1,
+                        '-5 days' => 6,
+                        '-6 days' => 6,
+                        '-7 days' => 4,
+                    ],
+                    'authors' => [
+                        'Test Person',
+                    ],
+                    'sources' => ['Reuters', 'AFP'],
                 ],
                 [
                     'title' => 'Test article',
                     'content' => 'Test article content',
                     'route' => 'news',
                     'locale' => 'en',
+                    'pageViews' => 10,
+                    'pageViewsDates' => [
+                        '-1 day' => 3,
+                        '-2 days' => 3,
+                        '-4 days' => 1,
+                        '-5 days' => 1,
+                        '-6 days' => 1,
+                        '-7 days' => 1,
+                    ],
+                    'authors' => [
+                        'John Doe',
+                    ],
+                    'sources' => ['Forbes', 'AAP'],
                 ],
                 [
                     'title' => 'Features',
                     'content' => 'Features content',
                     'route' => 'news',
                     'locale' => 'en',
+                    'pageViews' => 5,
+                    'pageViewsDates' => [
+                        '- 7 days' => 5,
+                    ],
+                    'authors' => [
+                        'John Doe Second',
+                    ],
+                    'sources' => ['Reuters', 'AAP'],
                 ],
                 [
                     'title' => 'Features client1',
                     'content' => 'Features client1 content',
                     'route' => 'articles/features',
                     'locale' => 'en',
+                    'pageViews' => 0,
+                    'pageViewsDates' => [],
+                    'authors' => [
+                        'Test Person',
+                    ],
+                    'sources' => ['Forbes', 'AFP'],
                 ],
             ],
         ];
 
         if (isset($articles[$env])) {
             $articleService = $this->container->get('swp.service.article');
+            $sourcesFactory = $this->container->get('swp.factory.article_source');
+            $articleSourcesService = $this->container->get('swp.service.article_source');
             foreach ($articles[$env] as $articleData) {
                 /** @var ArticleInterface $article */
                 $article = $this->container->get('swp.factory.article')->create();
@@ -379,7 +460,31 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
                 $article->setLocale($articleData['locale']);
                 $article->setCode(md5($articleData['title']));
                 $article->setKeywords($this->articleKeywords());
+
+                if (isset($articleData['extra'])) {
+                    $article->setExtra($articleData['extra']);
+                }
+
+                if (isset($articleData['authors'])) {
+                    foreach ($articleData['authors'] as $authorName) {
+                        $author = new ArticleAuthor();
+                        $author->setRole('Writer');
+                        $author->setName($authorName);
+                        $article->addAuthor($author);
+                    }
+                }
+
+                if (isset($articleData['sources'])) {
+                    foreach ((array) $articleData['sources'] as $source) {
+                        $articleSource = $sourcesFactory->create();
+                        $articleSource->setName($source);
+                        $article->addSourceReference($articleSourcesService->getArticleSourceReference($article, $articleSource));
+                    }
+                }
+
                 $package = $this->createPackage($articleData);
+                $articleStatistics = $this->createArticleStatistics($articleData['pageViews'], $articleData['pageViewsDates'], $article, $manager);
+                $manager->persist($articleStatistics);
                 $manager->persist($package);
                 $article->setPackage($package);
                 $manager->persist($article);
@@ -406,6 +511,31 @@ class LoadArticlesData extends AbstractFixture implements FixtureInterface, Orde
         $package->setVersion(1);
 
         return $package;
+    }
+
+    private function createArticleStatistics(int $pageViewsNumber, array $pageViewsDates, ArticleInterface $article, ObjectManager $manager)
+    {
+        /** @var ArticleStatisticsInterface $articleStatistics */
+        $articleStatistics = $this->container->get('swp.factory.article_statistics')->create();
+        $articleStatistics->setArticle($article);
+        $articleStatistics->setPageViewsNumber($pageViewsNumber);
+
+        $count = 0;
+        foreach ($pageViewsDates as $dateValue => $number) {
+            for ($i = $number; $i > 0; --$i) {
+                $articleEvent = new ArticleEvent();
+                $articleEvent->setArticleStatistics($articleStatistics);
+                $articleEvent->setAction(ArticleEventInterface::ACTION_PAGEVIEW);
+                $date = new \DateTime();
+                $date->modify($dateValue);
+                $date->setTime(mt_rand(0, 23), str_pad(mt_rand(0, 59), 2, '0', STR_PAD_LEFT));
+                $articleEvent->setCreatedAt($date);
+                $manager->persist($articleEvent);
+                ++$count;
+            }
+        }
+
+        return $articleStatistics;
     }
 
     /**

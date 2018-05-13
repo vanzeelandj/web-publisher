@@ -1,10 +1,13 @@
 services:
+    _defaults:
+        public: true
+
     swp_rule.expression_language:
         class: Symfony\Component\ExpressionLanguage\ExpressionLanguage
 
     swp_rule.evaluator.rule:
         class: SWP\Component\Rule\Evaluator\RuleEvaluator
-        public: false
+        public: true
         arguments:
             - '@logger'
             - '@swp_rule.expression_language'

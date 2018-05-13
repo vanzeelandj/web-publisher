@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Superdesk Web Publisher Bridge Component.
  *
@@ -16,11 +18,14 @@ namespace SWP\Component\Bridge\Model;
 
 use SWP\Component\Storage\Model\PersistableInterface;
 
-interface ContentInterface extends PersistableInterface
+interface ContentInterface extends PersistableInterface, AuthorsAwareInterface
 {
     const STATUS_USABLE = 'usable';
+
     const STATUS_CANCELED = 'canceled';
+
     const STATUS_PUBLISHED = 'published';
+
     const STATUS_UNPUBLISHED = 'unpublished';
 
     /**
@@ -227,4 +232,14 @@ interface ContentInterface extends PersistableInterface
      * @param null|string $source
      */
     public function setSource($source);
+
+    /**
+     * @return array|null
+     */
+    public function getExtra(): ?array;
+
+    /**
+     * @param array|null $extra
+     */
+    public function setExtra(?array $extra): void;
 }

@@ -30,23 +30,37 @@ class ChainLoader implements LoaderInterface
      */
     public function addLoader(LoaderInterface $loader)
     {
-        $this->loaders[] = $loader;
+        if (false !== $key = array_search($loader, $this->loaders)) {
+            $this->loaders[$key] = $loader;
+        } else {
+            $this->loaders[] = $loader;
+        }
     }
 
     /**
-     * Loads a Meta class from given datasource.
+     * @param LoaderInterface $loader
      *
-     * @param string     $type         object type
-     * @param array|null $parameters   parameters needed to load required object type
-     * @param int        $responseType response type: single meta (LoaderInterface::SINGLE) or collection of metas (LoaderInterface::COLLECTION)
-     *
-     * @return Meta|bool false if meta cannot be loaded, a Meta instance otherwise
+     * @return bool
      */
-    public function load($type, $parameters = [], $responseType = LoaderInterface::SINGLE)
+    public function removeLoader(LoaderInterface $loader)
+    {
+        if (false !== $key = array_search($loader, $this->loaders)) {
+            unset($this->loaders[$key]);
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     *  {@inheritdoc}
+     */
+    public function load($type, $parameters = [], $withoutParameters = [], $responseType = LoaderInterface::SINGLE)
     {
         foreach ($this->loaders as $loader) {
             if ($loader->isSupported($type)) {
-                if (false !== $meta = $loader->load($type, $parameters, $responseType)) {
+                if (false !== $meta = $loader->load($type, $parameters, $withoutParameters, $responseType)) {
                     return $meta;
                 }
             }

@@ -1,4 +1,7 @@
 services:
+    _defaults:
+        public: true
+
     swp_core.decorating_routing.twig_extension:
         class: SWP\Bundle\CoreBundle\Twig\RoutingExtension
         decorates: twig.extension.routing
@@ -24,5 +27,27 @@ services:
         public: false
         arguments:
             - "@swp_core.theme.context.tenant_aware"
+        tags:
+            - { name: twig.extension }
+
+    swp_core.analytics_extension:
+        class: SWP\Bundle\CoreBundle\Twig\ArticleEventsExtension
+        public: false
+        tags:
+            - { name: twig.extension }
+
+    swp_core.key_generator.meta_key_generator:
+        class: SWP\Bundle\CoreBundle\Twig\Cache\KeyGenerator\TenantAwareMetaKeyGenerator
+        arguments:
+            - '@swp_multi_tenancy.tenant_context'
+
+    swp_core.theme_twig_extension:
+        class: SWP\Bundle\CoreBundle\Twig\ThemeExtension
+        public: false
+        arguments:
+            - '@swp_core.provider.theme_logo'
+            - '@swp_multi_tenancy.tenant_context'
+            - '@swp_settings.manager.settings'
+            - '%kernel.environment%'
         tags:
             - { name: twig.extension }

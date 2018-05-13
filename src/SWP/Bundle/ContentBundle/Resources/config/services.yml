@@ -7,16 +7,19 @@ parameters:
     swp_content_bundle.router.media.class: SWP\Bundle\ContentBundle\Routing\MediaRouter
 
 services:
+    _defaults:
+        public: true
+
     swp_template_engine.loader.article:
         class: SWP\Bundle\ContentBundle\Loader\ArticleLoader
         arguments:
-            - "@swp.repository.article"
+            - "@swp.provider.article"
             - "@swp.provider.route"
             - "@swp.object_manager.article"
             - "@swp_template_engine_context.factory.meta_factory"
             - "@swp_template_engine_context"
         tags:
-            - { name: swp.meta_loader }
+            - { name: swp.meta_loader.add }
 
     swp_template_engine.loader.media:
         class: SWP\Bundle\ContentBundle\Loader\ArticleMediaLoader
@@ -25,7 +28,7 @@ services:
             - "@swp_template_engine_context.factory.meta_factory"
             - "@swp_template_engine_context"
         tags:
-            - { name: swp.meta_loader }
+            - { name: swp.meta_loader.add }
 
     swp_template_engine.loader.rendition:
         class: SWP\Bundle\ContentBundle\Loader\RenditionLoader
@@ -33,14 +36,24 @@ services:
             - "@swp_template_engine_context"
             - "@swp_template_engine_context.factory.meta_factory"
         tags:
-            - { name: swp.meta_loader }
+            - { name: swp.meta_loader.add }
 
     swp_template_engine.loader.route:
         class: SWP\Bundle\ContentBundle\Loader\RouteLoader
         arguments:
              - "@swp_template_engine_context.factory.meta_factory"
+             - "@swp.repository.route"
         tags:
-            - { name: swp.meta_loader }
+            - { name: swp.meta_loader.add }
+
+    swp_template_engine.loader.author:
+        class: SWP\Bundle\ContentBundle\Loader\ArticleAuthorLoader
+        arguments:
+            - "@swp_template_engine_context.factory.meta_factory"
+            - "@swp.repository.author"
+            - "@swp_template_engine_context"
+        tags:
+            - { name: swp.meta_loader.add }
 
     swp_content_bundle.factory.knp_paginator_representation:
         class: SWP\Component\Common\Factory\KnpPaginatorRepresentationFactory
@@ -68,8 +81,8 @@ services:
         class: SWP\Bundle\ContentBundle\EventListener\ProcessArticleMediaListener
         arguments:
             - '@swp.repository.media'
-            - '@swp_content_bundle.manager.media'
             - '@swp.factory.media'
+            - '@swp_content_bundle.processor.article_body'
         tags:
             - { name: kernel.event_listener, event: swp.article.pre_create, method: onArticleCreate }
 
@@ -103,16 +116,24 @@ services:
         class: '%swp_content_bundle.manager.media.class%'
         arguments:
             - '@swp.repository.media'
-            - '@swp.factory.media'
             - '@swp_filesystem'
             - '@router'
+            - '@swp.factory.image'
+            - '@swp.factory.file'
+
+    swp_content_bundle.processor.article_body:
+        class: SWP\Bundle\ContentBundle\Processor\ArticleBodyProcessor
+        arguments:
+            - '@swp_content_bundle.manager.media'
 
     router.symfony:
         parent: "router.default"
+        public: true
 
     swp_content_bundle.router.media:
         class: "%swp_content_bundle.router.media.class%"
         parent: "router.symfony"
+        public: true
         tags:
             - { name: router, priority: 300 }
 
@@ -134,15 +155,16 @@ services:
         class: SWP\Bundle\ContentBundle\Rule\Applicator\ArticleRuleApplicator
         arguments:
             - '@swp.provider.route'
-            - '@logger'
-            - '@swp.service.article'
+            - '@event_dispatcher'
+        calls:
+             - [setLogger, ['@logger']]
         tags:
             - { name: applicator.rule_applicator }
 
     swp.hydrator.article:
         class: SWP\Bundle\ContentBundle\Hydrator\ArticleHydrator
         arguments:
-             - '@swp.provider.route'
+             - '@swp.adder.article_source'
 
     swp_content_bundle.listener.article_publish:
         class: SWP\Bundle\ContentBundle\EventListener\ArticlePublishListener
@@ -159,3 +181,24 @@ services:
             - '@event_dispatcher'
         tags:
             - { name: doctrine.event_subscriber }
+
+    swp.adder.article_source:
+        class: SWP\Bundle\ContentBundle\Service\ArticleSourcesAdder
+        arguments:
+            - '@swp.factory.article_source'
+            - '@swp.service.article_source'
+            - '@swp.repository.article_source'
+
+    swp.service.article_source:
+        class: SWP\Bundle\ContentBundle\Service\ArticleSourceService
+        arguments:
+            - '@swp.factory.article_source_reference'
+            - '@swp.repository.article_source_reference'
+
+    swp.listener.update_package_authors:
+        class: SWP\Bundle\ContentBundle\EventListener\UpdatePackageAuthorsListener
+        arguments:
+            - '@swp.repository.author'
+        tags:
+            - { name: kernel.event_listener, event: swp.bridge.package_pre_update, method: preUpdate }
+            - { name: kernel.event_listener, event: swp.bridge.package_pre_create, method: preUpdate }

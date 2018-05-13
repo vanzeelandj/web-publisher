@@ -14,13 +14,15 @@
 
 namespace SWP\Bundle\ContentBundle\Provider\ORM;
 
-use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\RouteRepositoryInterface;
 use SWP\Bundle\ContentBundle\Provider\RouteProviderInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Cmf\Bundle\RoutingBundle\Doctrine\Orm\RouteProvider as BaseRouteProvider;
 use Doctrine\Common\Persistence\ManagerRegistry;
 use Symfony\Cmf\Component\Routing\Candidates\CandidatesInterface;
+use Symfony\Component\Routing\RouteCollection;
+use Symfony\Cmf\Bundle\RoutingBundle\Doctrine\Orm\Route;
 
 class RouteProvider extends BaseRouteProvider implements RouteProviderInterface
 {
@@ -39,12 +41,16 @@ class RouteProvider extends BaseRouteProvider implements RouteProviderInterface
      */
     private $candidatesStrategy;
 
-    public function __construct(
-        RouteRepositoryInterface $routeRepository,
-        ManagerRegistry $managerRegistry,
-        CandidatesInterface $candidatesStrategy,
-        $className
-    ) {
+    /**
+     * RouteProvider constructor.
+     *
+     * @param RouteRepositoryInterface $routeRepository
+     * @param ManagerRegistry          $managerRegistry
+     * @param CandidatesInterface      $candidatesStrategy
+     * @param string                   $className
+     */
+    public function __construct(RouteRepositoryInterface $routeRepository, ManagerRegistry $managerRegistry, CandidatesInterface $candidatesStrategy, string $className)
+    {
         $this->routeRepository = $routeRepository;
         $this->internalRoutesCache = [];
         $this->candidatesStrategy = $candidatesStrategy;
@@ -52,6 +58,31 @@ class RouteProvider extends BaseRouteProvider implements RouteProviderInterface
         parent::__construct($managerRegistry, $candidatesStrategy, $className);
     }
 
+    /**
+     * {@inheritdoc}
+     */
+    public function getRouteCollectionForRequest(Request $request)
+    {
+        $collection = new RouteCollection();
+
+        $candidates = $this->candidatesStrategy->getCandidates($request);
+        if (0 === count($candidates)) {
+            return $collection;
+        }
+        // As we use Gedmo Sortable on position field, we need to reverse sorting to get child routes first
+        $routes = $this->getByStaticPrefix($candidates, ['level' => 'DESC', 'position' => 'DESC']);
+
+        /** @var $route Route */
+        foreach ($routes as $route) {
+            $collection->add($route->getName(), $route);
+        }
+
+        return $collection;
+    }
+
+    /**
+     * @return RouteRepositoryInterface
+     */
     public function getRepository(): RouteRepositoryInterface
     {
         return $this->routeRepository;
@@ -76,6 +107,14 @@ class RouteProvider extends BaseRouteProvider implements RouteProviderInterface
     /**
      * {@inheritdoc}
      */
+    public function getOneByName(string $name)
+    {
+        return $this->routeRepository->findOneBy(['name' => $name]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
     public function getOneByStaticPrefix($staticPrefix)
     {
         return $this->routeRepository->findOneBy(['staticPrefix' => $staticPrefix]);
@@ -84,9 +123,56 @@ class RouteProvider extends BaseRouteProvider implements RouteProviderInterface
     /**
      * {@inheritdoc}
      */
-    public function getRouteForArticle(ArticleInterface $article)
+    public function getByStaticPrefix(array $candidates, array $orderBy = []): array
     {
-        return $article->getRoute();
+        return $this->getRouteRepository()->findBy(['staticPrefix' => $candidates], $orderBy);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getChildrenByStaticPrefix(array $candidates, array $orderBy = []): array
+    {
+        return $this->getRepository()->getChildrenByStaticPrefix($candidates, $orderBy)->getQuery()->getResult();
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getWithChildrenByStaticPrefix(array $candidates): ?array
+    {
+        $routes = null;
+        $routesForChilldrensLoading = [];
+        foreach ($candidates as $key => $providedRoute) {
+            if (false !== strpos($providedRoute, '/*')) {
+                $cleanRouteName = str_replace('/*', '', $providedRoute);
+                $routesForChilldrensLoading[$cleanRouteName] = null;
+                $candidates[$key] = $cleanRouteName;
+            }
+        }
+
+        $routesArray = $this->getByStaticPrefix($candidates);
+        if (count($routesArray) <= 0) {
+            return null;
+        }
+
+        $routes = $this->getArrayOfIdsFromRoutesArray($routesArray);
+
+        if (count($routesForChilldrensLoading) > 0) {
+            foreach ($routesArray as $key => $element) {
+                if (array_key_exists($element->getStaticPrefix(), $routesForChilldrensLoading)) {
+                    $routesForChilldrensLoading[$element->getStaticPrefix()] = $element->getId();
+                }
+            }
+
+            $routesForChilldrensLoading = array_filter(array_values($routesForChilldrensLoading));
+            $childrenRoutesArray = $this->getChildrenByStaticPrefix($routesForChilldrensLoading);
+            if (count($childrenRoutesArray) > 0) {
+                $routes = array_merge($routes, $this->getArrayOfIdsFromRoutesArray($childrenRoutesArray));
+            }
+        }
+
+        return $routes;
     }
 
     /**
@@ -109,5 +195,50 @@ class RouteProvider extends BaseRouteProvider implements RouteProviderInterface
         }
 
         return $route;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getByMixed($routeData)
+    {
+        if (is_int($routeData)) {
+            $route = $this->getOneById($routeData);
+        } elseif (is_string($routeData)) {
+            if (false !== strpos($routeData, '/')) {
+                $route = $this->getOneByStaticPrefix($routeData);
+            } else {
+                $route = $this->getRouteByName($routeData);
+            }
+        } elseif (is_array($routeData)) {
+            $loadByStaticPrefix = true;
+            foreach ($routeData as $key => $providedRoute) {
+                if (!is_string($providedRoute)) {
+                    $loadByStaticPrefix = false;
+
+                    break;
+                }
+            }
+
+            if ($loadByStaticPrefix) {
+                $route = $this->getWithChildrenByStaticPrefix($routeData);
+            } else {
+                $route = $routeData;
+            }
+        }
+
+        return $route;
+    }
+
+    /**
+     * @param array $routes
+     *
+     * @return array
+     */
+    private function getArrayOfIdsFromRoutesArray(array $routes): array
+    {
+        return array_map(function ($route) {
+            return $route->getId();
+        }, $routes);
     }
 }

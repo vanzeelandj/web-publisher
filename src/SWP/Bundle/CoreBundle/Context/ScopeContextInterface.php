@@ -19,5 +19,8 @@ use SWP\Bundle\SettingsBundle\Context\ScopeContextInterface as BaseScopeContextI
 interface ScopeContextInterface extends BaseScopeContextInterface
 {
     const SCOPE_ORGANIZATION = 'organization';
+
     const SCOPE_TENANT = 'tenant';
+
+    const SCOPE_THEME = 'theme';
 }

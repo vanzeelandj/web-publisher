@@ -32,6 +32,10 @@ SWP\Bundle\ContentBundle\Model\Article:
             type: string
         status:
             type: string
+        extra:
+            type: array
+            options:
+                default: 'a:0:{}'
         createdAt:
             type: datetime
             gedmo:
@@ -62,9 +66,6 @@ SWP\Bundle\ContentBundle\Model\Article:
             nullable: true
         code:
             type: string
-        source:
-            type: string
-            nullable: true
     manyToOne:
         route:
             targetEntity: SWP\Bundle\ContentBundle\Model\RouteInterface
@@ -87,3 +88,19 @@ SWP\Bundle\ContentBundle\Model\Article:
             targetEntity: SWP\Bundle\ContentBundle\Model\ArticleMediaInterface
             mappedBy: article
             cascade: ["remove"]
+        sources:
+            targetEntity: SWP\Bundle\ContentBundle\Model\ArticleSourceReference
+            mappedBy: article
+            cascade: ["remove"]
+    manyToMany:
+        authors:
+            targetEntity: SWP\Bundle\ContentBundle\Model\ArticleAuthorInterface
+            cascade: ["all"]
+            joinTable:
+                name: swp_article_author
+                joinColumns:
+                    article_id:
+                        referencedColumnName: id
+                inverseJoinColumns:
+                    author_id:
+                        referencedColumnName: id

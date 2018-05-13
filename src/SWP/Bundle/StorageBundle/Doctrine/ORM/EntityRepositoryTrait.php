@@ -80,7 +80,7 @@ trait EntityRepositoryTrait
     {
         $queryBuilder = $this->createQueryBuilder($alias);
         $this->applyCriteria($queryBuilder, $criteria, $alias);
-        $this->applySorting($queryBuilder, $sorting, $alias);
+        $this->applySorting($queryBuilder, $sorting, $alias, $criteria);
         $this->applyLimiting($queryBuilder, $criteria);
 
         return $queryBuilder;
@@ -101,12 +101,12 @@ trait EntityRepositoryTrait
     }
 
     /**
-     * @param $queryBuilder
+     * @param QueryBuilder   $queryBuilder
      * @param PaginationData $paginationData
      *
      * @return PaginationInterface
      */
-    protected function getPaginator($queryBuilder, PaginationData $paginationData)
+    protected function getPaginator(QueryBuilder $queryBuilder, PaginationData $paginationData)
     {
         $paginator = new Paginator();
 
@@ -122,17 +122,17 @@ trait EntityRepositoryTrait
     {
         $properties = array_merge($this->getClassMetadata()->getFieldNames(), $this->getClassMetadata()->getAssociationNames());
         foreach ($criteria->all() as $property => $value) {
-            if (!in_array($property, $properties)) {
+            if (!\in_array($property, $properties)) {
                 continue;
             }
 
             $name = $this->getPropertyName($property, $alias);
             if (null === $value) {
                 $queryBuilder->andWhere($queryBuilder->expr()->isNull($name));
-            } elseif (is_array($value)) {
+            } elseif (\is_array($value)) {
                 $queryBuilder->andWhere($queryBuilder->expr()->in($name, $value));
             } elseif ('' !== $value) {
-                $parameter = str_replace('.', '_', $property);
+                $parameter = \str_replace('.', '_', $property);
                 $queryBuilder
                     ->andWhere($queryBuilder->expr()->eq($name, ':'.$parameter))
                     ->setParameter($parameter, $value)
@@ -142,13 +142,19 @@ trait EntityRepositoryTrait
     }
 
     /**
-     * @param QueryBuilder $queryBuilder
-     * @param array        $sorting
-     * @param string       $alias
+     * @param QueryBuilder  $queryBuilder
+     * @param array         $sorting
+     * @param string        $alias
+     * @param Criteria|null $criteria
      */
-    protected function applySorting(QueryBuilder $queryBuilder, array $sorting, string $alias)
+    protected function applySorting(QueryBuilder $queryBuilder, array $sorting, string $alias, Criteria $criteria = null)
     {
+        $properties = \array_merge($this->getClassMetadata()->getFieldNames(), $this->getClassMetadata()->getAssociationNames());
         foreach ($sorting as $property => $order) {
+            if (!\in_array($property, $properties)) {
+                continue;
+            }
+
             if (!empty($order)) {
                 $queryBuilder->addOrderBy($this->getPropertyName($property, $alias), $order);
             }
@@ -163,7 +169,7 @@ trait EntityRepositoryTrait
      */
     protected function getPropertyName(string $name, string $alias)
     {
-        if (false === strpos($name, '.')) {
+        if (false === \strpos($name, '.')) {
             return $alias.'.'.$name;
         }
 

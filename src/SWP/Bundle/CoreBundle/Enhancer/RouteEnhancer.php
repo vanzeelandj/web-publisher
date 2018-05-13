@@ -29,6 +29,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 class RouteEnhancer implements RouteEnhancerInterface
 {
     const ARTICLE_META = '_article_meta';
+
     const ROUTE_META = '_route_meta';
 
     /**
@@ -47,15 +48,17 @@ class RouteEnhancer implements RouteEnhancerInterface
     protected $context;
 
     /**
+     * @var array
+     */
+    private $enhancedRoutesDefaults = [];
+
+    /**
      * @param TemplateNameResolverInterface $templateNameResolver
      * @param LoaderInterface               $metaLoader
      * @param Context                       $context
      */
-    public function __construct(
-        TemplateNameResolverInterface $templateNameResolver,
-        LoaderInterface $metaLoader,
-        Context $context
-    ) {
+    public function __construct(TemplateNameResolverInterface $templateNameResolver, LoaderInterface $metaLoader, Context $context)
+    {
         $this->templateNameResolver = $templateNameResolver;
         $this->metaLoader = $metaLoader;
         $this->context = $context;
@@ -71,10 +74,19 @@ class RouteEnhancer implements RouteEnhancerInterface
      */
     public function enhance(array $defaults, Request $request)
     {
-        $defaults['_controller'] = ContentController::class.'::renderPageAction';
-        $defaults = $this->setArticleMeta($this->getContentFromDefaults($defaults), $request, $defaults);
-        $defaults = $this->setTemplateName($this->getContentFromDefaults($defaults), $defaults);
-        $defaults = $this->setRouteMeta($request, $defaults);
+        $defaultsKey = md5(json_encode($defaults));
+        if (!isset($this->enhancedRoutesDefaults[$defaultsKey])) {
+            $defaults['_controller'] = ContentController::class.'::renderPageAction';
+            $defaults = $this->setArticleMeta($this->getContentFromDefaults($defaults), $defaults);
+            $defaults = $this->setTemplateName($this->getContentFromDefaults($defaults), $defaults);
+            $defaults = $this->setRouteMeta($defaults);
+            $this->enhancedRoutesDefaults[$defaultsKey] = $defaults;
+        } else {
+            $defaults = $this->enhancedRoutesDefaults[$defaultsKey];
+        }
+
+        $request->attributes->set('routeMeta', $defaults[self::ROUTE_META]);
+        $request->attributes->set('articleMeta', $defaults[self::ARTICLE_META]);
 
         return $defaults;
     }
@@ -82,21 +94,20 @@ class RouteEnhancer implements RouteEnhancerInterface
     /**
      * Get article based on available parameters, set route type.
      *
-     * @param mixed   $content
-     * @param Request $request
-     * @param array   $defaults
+     * @param mixed $content
+     * @param array $defaults
      *
      * @throws NotFoundHttpException
      *
      * @return array
      */
-    public function setArticleMeta($content, Request $request, array $defaults)
+    public function setArticleMeta($content, array $defaults)
     {
         $articleMeta = null;
         if (isset($defaults['slug'])) {
             $articleMeta = $this->metaLoader->load('article', ['slug' => $defaults['slug']], LoaderInterface::SINGLE);
             $defaults['type'] = RouteInterface::TYPE_COLLECTION;
-            if (null === $articleMeta) {
+            if (null === $articleMeta || ($articleMeta->getValues()->getRoute()->getId() !== $defaults[RouteObjectInterface::ROUTE_OBJECT]->getId())) {
                 throw new NotFoundHttpException('Article was not found.');
             }
         } elseif ($content instanceof ArticleInterface) {
@@ -110,7 +121,6 @@ class RouteEnhancer implements RouteEnhancerInterface
             $defaults[RouteObjectInterface::CONTENT_OBJECT] = $articleMeta->getValues();
         }
 
-        $request->attributes->set('articleMeta', $articleMeta);
         $defaults[self::ARTICLE_META] = $articleMeta;
 
         return $defaults;
@@ -137,15 +147,13 @@ class RouteEnhancer implements RouteEnhancerInterface
     }
 
     /**
-     * @param Request $request
-     * @param array   $defaults
+     * @param array $defaults
      *
      * @return array
      */
-    public function setRouteMeta(Request $request, array $defaults)
+    public function setRouteMeta(array $defaults)
     {
         $routeMeta = $this->metaLoader->load('route', ['route_object' => $defaults[RouteObjectInterface::ROUTE_OBJECT]]);
-        $request->attributes->set('routeMeta', $routeMeta);
         $defaults[self::ROUTE_META] = $routeMeta;
 
         if ($routeMeta instanceof Meta) {

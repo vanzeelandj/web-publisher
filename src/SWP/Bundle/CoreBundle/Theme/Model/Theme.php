@@ -24,6 +24,38 @@ class Theme extends BaseTheme implements ThemeInterface
      */
     protected $config;
 
+    /**
+     * @var \SplFileInfo
+     */
+    protected $logo;
+
+    /**
+     * @var string
+     */
+    protected $logoPath;
+
+    /**
+     * @var array
+     */
+    protected $generatedData = [
+        'routes' => [],
+        'menus' => [],
+        'containers' => [],
+        'widgets' => [],
+        'contentLists' => [],
+    ];
+
+    /**
+     * @var array
+     */
+    protected $settings = [];
+
+    /**
+     * Theme constructor.
+     *
+     * @param string $name
+     * @param string $path
+     */
     public function __construct($name, $path)
     {
         if ($tempName = strstr($name, ThemeHelper::SUFFIX_SEPARATOR, true)) {
@@ -44,8 +76,104 @@ class Theme extends BaseTheme implements ThemeInterface
     /**
      * {@inheritdoc}
      */
-    public function getDefaultTemplates()
+    public function getDefaultTemplates(): array
     {
         return $this->config['defaultTemplates'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getRoutes(): array
+    {
+        return $this->generatedData['routes'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getMenus(): array
+    {
+        return $this->generatedData['menus'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getContainers(): array
+    {
+        return $this->generatedData['containers'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getWidgets(): array
+    {
+        return $this->generatedData['widgets'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getContentLists(): array
+    {
+        return $this->generatedData['contentLists'];
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getLogo(): ?\SplFileInfo
+    {
+        return $this->logo;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setLogo(?\SplFileInfo $file): void
+    {
+        $this->logo = $file;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getSettings(): array
+    {
+        return $this->settings;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setSettings(array $settings): void
+    {
+        $this->settings = $settings;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getLogoPath(): ?string
+    {
+        return $this->logoPath;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function setLogoPath(?string $path): void
+    {
+        $this->logoPath = $path;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function hasLogo(): bool
+    {
+        return null !== $this->logo;
     }
 }

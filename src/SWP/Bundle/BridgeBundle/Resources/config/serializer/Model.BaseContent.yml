@@ -55,6 +55,7 @@ SWP\Component\Bridge\Model\BaseContent:
             type: array
         edNote:
             expose: true
+            serialized_name: ednote
             type: string
         description:
             expose: true
@@ -74,3 +75,9 @@ SWP\Component\Bridge\Model\BaseContent:
         source:
             expose: true
             type: string
+        authors:
+            expose: true
+            type: ArrayCollection<SWP\Bundle\ContentBundle\Model\ArticleAuthor>
+        extra:
+            expose: true
+            type: array

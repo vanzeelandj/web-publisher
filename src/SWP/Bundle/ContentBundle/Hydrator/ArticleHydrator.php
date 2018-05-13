@@ -17,17 +17,17 @@ declare(strict_types=1);
 namespace SWP\Bundle\ContentBundle\Hydrator;
 
 use Doctrine\Common\Collections\Collection;
+use SWP\Bundle\ContentBundle\Service\ArticleSourcesAdderInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
-use SWP\Bundle\ContentBundle\Provider\RouteProviderInterface;
 use SWP\Component\Bridge\Model\ItemInterface;
 use SWP\Component\Bridge\Model\PackageInterface;
 
 final class ArticleHydrator implements ArticleHydratorInterface
 {
     /**
-     * @var RouteProviderInterface
+     * @var ArticleSourcesAdderInterface
      */
-    private $routeProvider;
+    private $articleSourcesAdder;
 
     /**
      * @var array
@@ -42,11 +42,11 @@ final class ArticleHydrator implements ArticleHydratorInterface
     /**
      * ArticleHydrator constructor.
      *
-     * @param RouteProviderInterface $routeProvider
+     * @param ArticleSourcesAdderInterface $articleSourcesAdder
      */
-    public function __construct(RouteProviderInterface $routeProvider)
+    public function __construct(ArticleSourcesAdderInterface $articleSourcesAdder)
     {
-        $this->routeProvider = $routeProvider;
+        $this->articleSourcesAdder = $articleSourcesAdder;
     }
 
     /**
@@ -60,18 +60,22 @@ final class ArticleHydrator implements ArticleHydratorInterface
 
         $article->setCode($package->getGuid());
         $article->setBody($this->populateBody($package));
-        $article->setTitle($package->getHeadline());
-        $article->setSource($package->getSource());
-        if (null !== $package->getSlugline()) {
+
+        if (null !== $package->getSlugline() && null === $article->getSlug()) {
             $article->setSlug($package->getSlugline());
         }
+
+        $article->setTitle($package->getHeadline());
+        $article->setAuthors($package->getAuthors());
+        $article->setExtra($package->getExtra());
+
+        $this->populateSources($article, $package);
 
         $article->setLocale($package->getLanguage());
         $article->setLead($this->populateLead($package));
         $article->setMetadata($package->getMetadata());
         $article->setKeywords($package->getKeywords());
-        // assign default route
-        $article->setRoute($this->routeProvider->getRouteForArticle($article));
+        $article->setRoute($article->getRoute());
 
         return $article;
     }
@@ -120,6 +124,11 @@ final class ArticleHydrator implements ArticleHydratorInterface
         return implode(', ', $authors);
     }
 
+    /**
+     * @param Collection $items
+     *
+     * @return Collection
+     */
     private function filterTextItems(Collection $items)
     {
         return $items->filter(
@@ -143,6 +152,27 @@ final class ArticleHydrator implements ArticleHydratorInterface
 
             return $item->getBody();
         }, $package->getItems()->toArray()));
+    }
+
+    /**
+     * @param ArticleInterface $article
+     * @param PackageInterface $package
+     */
+    private function populateSources(ArticleInterface $article, PackageInterface $package)
+    {
+        if (null === $package->getSource()) {
+            return;
+        }
+
+        $this->articleSourcesAdder->add($article, $package->getSource());
+
+        foreach ($package->getItems() as $item) {
+            if (null === $item->getSource()) {
+                continue;
+            }
+
+            $this->articleSourcesAdder->add($article, $item->getSource());
+        }
     }
 
     /**

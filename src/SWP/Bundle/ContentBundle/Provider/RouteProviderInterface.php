@@ -14,11 +14,11 @@
 
 namespace SWP\Bundle\ContentBundle\Provider;
 
-use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
 use SWP\Bundle\ContentBundle\Model\RouteRepositoryInterface;
+use Symfony\Cmf\Component\Routing\RouteProviderInterface as CmfRouteProviderInterface;
 
-interface RouteProviderInterface
+interface RouteProviderInterface extends CmfRouteProviderInterface
 {
     /**
      * Gets routes repository.
@@ -44,18 +44,46 @@ interface RouteProviderInterface
     public function getOneById($id);
 
     /**
-     * Gets the route for article. Indicates route the article should have.
-     *
-     * @param ArticleInterface $article
-     *
-     * @return RouteInterface|null
-     */
-    public function getRouteForArticle(ArticleInterface $article);
-
-    /**
      * @param string $staticPrefix
      *
      * @return RouteInterface|null
      */
     public function getOneByStaticPrefix($staticPrefix);
+
+    /**
+     * @param string $name
+     *
+     * @return mixed
+     */
+    public function getOneByName(string $name);
+
+    /**
+     * @param array $candidates
+     * @param array $orderBy
+     *
+     * @return array
+     */
+    public function getByStaticPrefix(array $candidates, array $orderBy = []): array;
+
+    /**
+     * @param array $candidates
+     * @param array $orderBy
+     *
+     * @return array
+     */
+    public function getChildrenByStaticPrefix(array $candidates, array $orderBy = []): array;
+
+    /**
+     * @param array $candidates
+     *
+     * @return array|null
+     */
+    public function getWithChildrenByStaticPrefix(array $candidates): ?array;
+
+    /**
+     * @param mixed $routeData
+     *
+     * @return array|null|object|\SWP\Bundle\ContentBundle\Model\RouteInterface
+     */
+    public function getByMixed($routeData);
 }

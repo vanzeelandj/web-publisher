@@ -16,12 +16,10 @@ namespace SWP\Bundle\ContentBundle\Factory;
 
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleMediaInterface;
-use SWP\Bundle\ContentBundle\Model\FileInterface;
 use SWP\Bundle\ContentBundle\Model\ImageInterface;
 use SWP\Bundle\ContentBundle\Model\ImageRenditionInterface;
 use SWP\Component\Bridge\Model\ItemInterface;
 use SWP\Component\Bridge\Model\Rendition;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 interface MediaFactoryInterface
 {
@@ -35,12 +33,9 @@ interface MediaFactoryInterface
     public function create(ArticleInterface $article, string $key, ItemInterface $item): ArticleMediaInterface;
 
     /**
-     * @param UploadedFile $uploadedFile
-     * @param string       $assetId
-     *
-     * @return FileInterface
+     * @return ArticleMediaInterface
      */
-    public function createMediaAsset(UploadedFile $uploadedFile, string $assetId): FileInterface;
+    public function createEmpty(): ArticleMediaInterface;
 
     /**
      * @param ImageInterface        $image
@@ -50,9 +45,5 @@ interface MediaFactoryInterface
      *
      * @return ImageRenditionInterface
      */
-    public function createImageRendition(
-        ImageInterface $image,
-        ArticleMediaInterface $articleMedia,
-        string $key, Rendition $rendition
-    ): ImageRenditionInterface;
+    public function createImageRendition(ImageInterface $image, ArticleMediaInterface $articleMedia, string $key, Rendition $rendition): ImageRenditionInterface;
 }

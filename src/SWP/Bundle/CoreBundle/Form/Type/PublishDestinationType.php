@@ -19,6 +19,7 @@ namespace SWP\Bundle\CoreBundle\Form\Type;
 use SWP\Bundle\CoreBundle\Model\PublishDestination;
 use SWP\Bundle\MultiTenancyBundle\Form\Type\TenantSelectorType;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -32,7 +33,9 @@ final class PublishDestinationType extends AbstractType
         $builder
             ->add('tenant', TenantSelectorType::class)
             ->add('route', TenantAwareRouteSelectorType::class)
-            ->add('fbia', BooleanType::class);
+            ->add('fbia', BooleanType::class)
+            ->add('packageGuid', TextType::class)
+            ->add('published', BooleanType::class);
     }
 
     /**
@@ -40,8 +43,17 @@ final class PublishDestinationType extends AbstractType
      */
     public function configureOptions(OptionsResolver $resolver)
     {
-        $resolver->setDefaults(array(
+        $resolver->setDefaults([
             'data_class' => PublishDestination::class,
-        ));
+            'csrf_protection' => false,
+        ]);
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getBlockPrefix()
+    {
+        return 'publish_destination';
     }
 }
