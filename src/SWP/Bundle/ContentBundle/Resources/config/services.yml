@@ -85,6 +85,11 @@ services:
             - '@swp_content_bundle.processor.article_body'
         tags:
             - { name: kernel.event_listener, event: swp.article.pre_create, method: onArticleCreate }
+            - { name: kernel.event_listener, event: swp.article.pre_update, method: onArticleCreate }
+
+    SWP\Bundle\ContentBundle\EventListener\SetProvidedPublishedDateListener:
+        tags:
+            - { name: kernel.event_listener, event: swp.article.pre_create, method: onArticleCreate }
 
     swp_content_bundle.key_generator.meta_key_generator:
         class: SWP\Bundle\ContentBundle\KeyGenerator\MetaKeyGenerator
@@ -175,12 +180,12 @@ services:
             - { name: kernel.event_listener, event: swp.article.unpublish, method: unpublish }
             - { name: kernel.event_listener, event: swp.article.canceled, method: cancel }
 
-    swp_content_bundle.listener.article_subscriber:
-        class: SWP\Bundle\ContentBundle\EventListener\ArticleSubscriber
+    swp_content_bundle.listener.route_remove:
+        class: SWP\Bundle\ContentBundle\EventListener\RouteRemoveListener
         arguments:
-            - '@event_dispatcher'
+            - '@doctrine.orm.entity_manager'
         tags:
-            - { name: doctrine.event_subscriber }
+            - { name: kernel.event_listener, event: swp.route.pre_delete, method: onDelete }
 
     swp.adder.article_source:
         class: SWP\Bundle\ContentBundle\Service\ArticleSourcesAdder
@@ -202,3 +207,7 @@ services:
         tags:
             - { name: kernel.event_listener, event: swp.bridge.package_pre_update, method: preUpdate }
             - { name: kernel.event_listener, event: swp.bridge.package_pre_create, method: preUpdate }
+
+    SWP\Bundle\ContentBundle\EventListener\PopulateArticleAuthorSlugListener:
+        tags:
+            - { name: doctrine.event_listener, event: prePersist }

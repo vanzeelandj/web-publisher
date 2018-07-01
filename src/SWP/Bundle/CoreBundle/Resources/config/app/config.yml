@@ -71,7 +71,7 @@ swp_rule:
             classes:
                 rule:
                     model: SWP\Bundle\CoreBundle\Model\Rule
-
+                    repository: SWP\Bundle\CoreBundle\Repository\RuleRepository
 swp_menu:
     persistence:
         orm:
@@ -79,6 +79,7 @@ swp_menu:
             classes:
                 menu:
                     model: SWP\Bundle\CoreBundle\Model\MenuItem
+                    repository: SWP\Bundle\CoreBundle\Repository\MenuItemRepository
 
 swp_content:
     persistence:
@@ -289,6 +290,9 @@ swp_output_channel:
             classes:
                 output_channel:
                     model: SWP\Bundle\CoreBundle\Model\OutputChannel
+                external_article:
+                    model: SWP\Bundle\CoreBundle\Model\ExternalArticle
+                    interface: SWP\Bundle\CoreBundle\Model\ExternalArticleInterface
 
 old_sound_rabbit_mq:
     connections:
@@ -308,17 +312,17 @@ old_sound_rabbit_mq:
     producers:
         send_webhook:
             connection:       default
-            exchange_options: {name: '%kernel.environment%_send_webhook', type: direct}
+            exchange_options: {name: '%kernel.environment%_%kernel.secret%_send_webhook', type: direct}
     consumers:
         send_webhook:
             connection:       default
-            exchange_options: {name: '%kernel.environment%_send_webhook', type: direct}
-            queue_options:    {name: '%kernel.environment%_send_webhook'}
+            exchange_options: {name: '%kernel.environment%_%kernel.secret%_send_webhook', type: direct}
+            queue_options:    {name: '%kernel.environment%_%kernel.secret%_send_webhook'}
             callback:         SWP\Bundle\CoreBundle\Consumer\SendWebhookConsumer
         analytics_event:
             connection:       default
-            exchange_options: {name: '%kernel.environment%_analytics_event', type: direct}
-            queue_options:    {name: '%kernel.environment%_analytics_event'}
+            exchange_options: {name: '%kernel.environment%_%kernel.secret%_analytics_event', type: direct}
+            queue_options:    {name: '%kernel.environment%_%kernel.secret%_analytics_event'}
             callback:         SWP\Bundle\CoreBundle\Consumer\AnalyticsEventConsumer
 
 bazinga_hateoas:

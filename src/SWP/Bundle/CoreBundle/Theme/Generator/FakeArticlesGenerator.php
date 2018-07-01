@@ -21,13 +21,17 @@ use Doctrine\Common\Collections\Collection;
 use SWP\Bundle\ContentBundle\Factory\ArticleFactoryInterface;
 use SWP\Bundle\ContentBundle\Factory\MediaFactoryInterface;
 use SWP\Bundle\ContentBundle\Manager\MediaManagerInterface;
+use SWP\Bundle\ContentBundle\Model\ArticleAuthor;
 use SWP\Bundle\ContentBundle\Model\ImageRendition;
 use SWP\Bundle\CoreBundle\Model\ArticleInterface;
 use SWP\Bundle\CoreBundle\Model\ArticleMediaInterface;
 use SWP\Bundle\CoreBundle\Model\ArticleStatisticsInterface;
 use SWP\Bundle\CoreBundle\Model\Image;
+use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\CoreBundle\Repository\ArticleRepositoryInterface;
 use Faker;
+use SWP\Component\Bridge\Model\ContentInterface;
+use SWP\Component\Bridge\Model\ItemInterface;
 use SWP\Component\Storage\Factory\FactoryInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
@@ -59,6 +63,16 @@ class FakeArticlesGenerator implements FakeArticlesGeneratorInterface
     protected $articleStatisticsFactory;
 
     /**
+     * @var FactoryInterface
+     */
+    protected $packageFactory;
+
+    /**
+     * @var FactoryInterface
+     */
+    protected $itemFactory;
+
+    /**
      * FakeArticlesGenerator constructor.
      *
      * @param ArticleFactoryInterface    $articleFactory
@@ -66,14 +80,25 @@ class FakeArticlesGenerator implements FakeArticlesGeneratorInterface
      * @param MediaFactoryInterface      $articleMediaFactory
      * @param ArticleRepositoryInterface $articleRepository
      * @param FactoryInterface           $articleStatisticsFactory
+     * @param FactoryInterface           $packageFactory
+     * @param FactoryInterface           $itemFactory
      */
-    public function __construct(ArticleFactoryInterface $articleFactory, MediaManagerInterface $mediaManager, MediaFactoryInterface $articleMediaFactory, ArticleRepositoryInterface $articleRepository, FactoryInterface $articleStatisticsFactory)
-    {
+    public function __construct(
+        ArticleFactoryInterface $articleFactory,
+        MediaManagerInterface $mediaManager,
+        MediaFactoryInterface $articleMediaFactory,
+        ArticleRepositoryInterface $articleRepository,
+        FactoryInterface $articleStatisticsFactory,
+        FactoryInterface $packageFactory,
+        FactoryInterface $itemFactory
+    ) {
         $this->articleFactory = $articleFactory;
         $this->mediaManager = $mediaManager;
         $this->articleMediaFactory = $articleMediaFactory;
         $this->articleRepository = $articleRepository;
         $this->articleStatisticsFactory = $articleStatisticsFactory;
+        $this->packageFactory = $packageFactory;
+        $this->itemFactory = $itemFactory;
     }
 
     /**
@@ -86,19 +111,54 @@ class FakeArticlesGenerator implements FakeArticlesGeneratorInterface
             /** @var ArticleInterface $article */
             $article = $this->articleFactory->create();
             $faker = Faker\Factory::create();
-            $article->setTitle($faker->catchPhrase());
-            $article->setBody($faker->paragraph(20));
+            $code = $faker->uuid;
+            $title = $faker->catchPhrase();
+            $body = $faker->paragraph(20);
+            $article->setTitle($title);
+            $article->setBody($body);
             $article->setLead($faker->paragraph(3));
             $article->setLocale('en');
             $article->setMetadata(['located' => 'Porto']);
             $article->setStatus(ArticleInterface::STATUS_PUBLISHED);
             $article->setPublishedAt(new \DateTime());
             $article->setPublishable(true);
-            $article->setCode($faker->uuid);
+            $article->setCode($code);
             $this->articleRepository->persist($article);
             $this->articleRepository->flush();
             $article->setMedia($this->createArticleMedia($article));
             $article->setArticleStatistics($this->createArticleStatistics($article));
+            $author = new ArticleAuthor();
+            $author->setRole('editor');
+            $author->setName('John Doe');
+            $article->setAuthors(new ArrayCollection([$author]));
+
+            /** @var PackageInterface $package */
+            $package = $this->packageFactory->create();
+            $package->setStatus(PackageInterface::STATUS_PUBLISHED);
+            $package->setType('composite');
+            $package->setGuid($code);
+            $package->setLocated('Porto');
+            $package->setHeadline($title);
+            $package->setLanguage('en');
+            $package->setPriority(1);
+            $package->setVersion(1);
+
+            /** @var ItemInterface $item */
+            $item = $this->itemFactory->create();
+            $item->setPubStatus(ContentInterface::STATUS_USABLE);
+            $item->setType('text');
+            $item->setGuid($code);
+            $item->setLocated('Porto');
+            $item->setHeadline($title);
+            $item->setLanguage('en');
+            $item->setPriority(1);
+            $item->setVersion(1);
+            $item->setBody($body);
+            $item->setAuthors(new ArrayCollection([$author]));
+            $package->setItems(new ArrayCollection([$item]));
+            $this->articleRepository->persist($package);
+            $article->setPackage($package);
+
             $this->articleRepository->flush();
 
             $articles[] = $article;
@@ -130,7 +190,7 @@ class FakeArticlesGenerator implements FakeArticlesGeneratorInterface
      */
     protected function createArticleMedia(ArticleInterface $article): Collection
     {
-        $mediaId = uniqid();
+        $mediaId = \uniqid('', false);
         $faker = Faker\Factory::create();
         $fakeImage = $faker->image(sys_get_temp_dir(), 800, 800, 'cats', true, true, $article->getSlug());
         if (!is_string($fakeImage)) {

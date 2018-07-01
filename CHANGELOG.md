@@ -7,6 +7,15 @@ This changelog references the relevant changes (bug and security fixes) done in 
 To get the diff for a specific change, go to https://github.com/superdesk/web-publisher/commit/XXX where XXX is the change hash
 
 * 1.4.0
+ * improvement [#560] Add sufix (generated from package guid) for duplicated article slugs
+ * bug [#556] Fixed boolean values in Settings API
+ * feature [#548] Added periodic ping calls to keep WebSocket connection alive
+ * bug [#544] List only published articles in content lists on frontend
+ * feature [#538] Store article author images in publisher
+ * bug [#531] Assign package to theme generated articles
+ * bug [#530] Authors without slug after publishing article
+ * bug [#525] Fixed the status of already published package after the correction
+ * improvement [#524] Allow to set published to false when publishing an article
  * feature [#503] Added push integration/notification about newly created package based on WebSocket
  * bug [#499] Fixed package preview when template is not set or does not exist
  * bug [#494] Fixed article's slug line so it can handle chinese chars

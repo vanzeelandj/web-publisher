@@ -10,3 +10,11 @@ SWP\Bundle\ContentBundle\Model\ArticleMedia:
             expose: true
         renditions:
             expose: true
+    relations:
+        -
+            rel: download
+            href:
+                route: swp_media_get
+                parameters:
+                    mediaId: "expr(object.getImage() ? object.getImage().getAssetId() : object.getFile().getAssetId())"
+                    extension: "expr(object.getImage() ? object.getImage().getFileExtension() : object.getImage().getFileExtension())"

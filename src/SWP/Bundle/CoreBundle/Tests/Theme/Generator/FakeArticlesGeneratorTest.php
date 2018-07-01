@@ -14,9 +14,11 @@
 
 namespace SWP\Bundle\CoreBundle\Tests;
 
+use Doctrine\Common\Collections\ArrayCollection;
 use SWP\Bundle\CoreBundle\Model\ArticleInterface;
 use SWP\Bundle\CoreBundle\Model\ArticleMediaInterface;
 use SWP\Bundle\CoreBundle\Model\ArticleStatisticsInterface;
+use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\CoreBundle\Theme\Generator\FakeArticlesGenerator;
 use SWP\Bundle\CoreBundle\Theme\Generator\FakeArticlesGeneratorInterface;
 use SWP\Bundle\FixturesBundle\WebTestCase;
@@ -41,7 +43,9 @@ class FakeArticlesGeneratorTest extends WebTestCase
             $this->getContainer()->get('swp_content_bundle.manager.media'),
             $this->getContainer()->get('swp.factory.media'),
             $this->getContainer()->get('swp.repository.article'),
-            $this->getContainer()->get('swp.factory.article_statistics')
+            $this->getContainer()->get('swp.factory.article_statistics'),
+            $this->getContainer()->get('swp.factory.package'),
+            $this->getContainer()->get('swp.factory.item')
         );
 
         self::assertInstanceOf(FakeArticlesGeneratorInterface::class, $fakeArticlesGenerator);
@@ -50,7 +54,12 @@ class FakeArticlesGeneratorTest extends WebTestCase
         $generatedArticles = $fakeArticlesGenerator->generate(5);
         self::assertCount(5, $generatedArticles);
         self::assertInstanceOf(ArticleInterface::class, $generatedArticles[0]);
+        self::assertEquals(['John Doe'], $generatedArticles[0]->getAuthorsNames());
         self::assertInstanceOf(ArticleStatisticsInterface::class, $generatedArticles[0]->getArticleStatistics());
         self::assertInstanceOf(ArticleMediaInterface::class, $generatedArticles[0]->getMedia()[0]);
+        self::assertInstanceOf(PackageInterface::class, $generatedArticles[0]->getPackage());
+
+        $generatedArticles[0]->setAuthors(new ArrayCollection([]));
+        self::assertEquals([], $generatedArticles[0]->getAuthorsNames());
     }
 }

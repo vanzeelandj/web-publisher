@@ -50,6 +50,13 @@ class ArticleAuthorLoaderTest extends WebTestCase
         self::assertEquals(' Tom  Test Person  John Doe  John Doe Second  Test Person ', $result);
     }
 
+    public function testRenderingArticleAuthorsAvatars()
+    {
+        $template = '{% gimmelist author from authors %} {{ url(author.avatar) }} {% endgimmelist %}';
+        $result = $this->getRendered($template);
+        self::assertEquals(' http://localhost/author/media/tom.jpg  http://localhost/author/media/test-person.jpg  http://localhost/author/media/john-doe.jpg  http://localhost/author/media/john-doe-second.jpg  http://localhost/author/media/test-person.jpg ', $result);
+    }
+
     public function testRenderingArticleAuthorsOrdered()
     {
         $template = '{% gimmelist author from authors|order("name", "asc") %} {{ author.name }} {% endgimmelist %}';
@@ -102,13 +109,13 @@ class ArticleAuthorLoaderTest extends WebTestCase
 
     public function testLoadAuthorBySlug()
     {
-        $template = '{% gimme author with {slug: "tom"} %} {{ author.name }} {% endgimme %}';
+        $template = '{% gimme author with {slug: "tom"} %} {{ author.name }} {{ author.slug }} {% endgimme %}';
         $result = $this->getRendered($template);
-        self::assertEquals(' Tom ', $result);
+        self::assertEquals(' Tom tom ', $result);
 
-        $template = '{% gimme author with {slug: "john-doe"} %} {{ author.name }} {% endgimme %}';
+        $template = '{% gimme author with {slug: "john-doe"} %} {{ author.name }} {{ author.slug }} {% endgimme %}';
         $result = $this->getRendered($template);
-        self::assertEquals(' John Doe ', $result);
+        self::assertEquals(' John Doe john-doe ', $result);
     }
 
     private function getRendered($template, $context = [])
