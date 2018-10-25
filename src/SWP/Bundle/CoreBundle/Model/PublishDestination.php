@@ -19,10 +19,11 @@ namespace SWP\Bundle\CoreBundle\Model;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
 use SWP\Component\Common\Model\TimestampableTrait;
 use SWP\Component\MultiTenancy\Model\OrganizationAwareTrait;
+use SWP\Component\Paywall\Model\PaywallSecuredTrait;
 
 class PublishDestination implements PublishDestinationInterface
 {
-    use TimestampableTrait, OrganizationAwareTrait;
+    use TimestampableTrait, OrganizationAwareTrait, PaywallSecuredTrait;
 
     /**
      * @var string
@@ -42,7 +43,7 @@ class PublishDestination implements PublishDestinationInterface
     /**
      * @var bool
      */
-    protected $fbia = true;
+    protected $isPublishedFbia = true;
 
     /**
      * @var bool
@@ -97,17 +98,17 @@ class PublishDestination implements PublishDestinationInterface
     /**
      * {@inheritdoc}
      */
-    public function isFbia(): bool
+    public function isPublishedFbia(): bool
     {
-        return $this->fbia;
+        return $this->isPublishedFbia;
     }
 
     /**
      * {@inheritdoc}
      */
-    public function setFbia(bool $fbia)
+    public function setIsPublishedFbia(bool $isPublishedFbia): void
     {
-        $this->fbia = $fbia;
+        $this->isPublishedFbia = $isPublishedFbia;
     }
 
     /**

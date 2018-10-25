@@ -153,8 +153,9 @@ class RulesMatcher implements RulesMatcherInterface
         return [
             'tenant' => $destination->getTenant(),
             'route' => $destination->getRoute(),
-            'fbia' => $destination->isFbia(),
+            'isPublishedFbia' => $destination->isPublishedFbia(),
             'published' => $destination->isPublished(),
+            'paywallSecured' => $destination->isPaywallSecured(),
         ];
     }
 

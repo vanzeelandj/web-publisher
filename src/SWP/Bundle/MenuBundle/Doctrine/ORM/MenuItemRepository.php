@@ -75,6 +75,8 @@ class MenuItemRepository extends EntityRepository implements MenuItemRepositoryI
             ->leftJoin('m.children', 'c')
             ->addSelect('ch')
             ->leftJoin('c.children', 'ch')
+            ->addSelect('chc')
+            ->leftJoin('ch.children', 'chc')
             ->where('m.name = :name')
             ->setParameter('name', $name)
             ->getQuery()
@@ -91,6 +93,8 @@ class MenuItemRepository extends EntityRepository implements MenuItemRepositoryI
             ->leftJoin('m.children', 'c')
             ->addSelect('ch')
             ->leftJoin('c.children', 'ch')
+            ->addSelect('chc')
+            ->leftJoin('ch.children', 'chc')
             ->where('m.id = :id')
             ->setParameter('id', $id)
             ->getQuery()
@@ -188,7 +192,6 @@ class MenuItemRepository extends EntityRepository implements MenuItemRepositoryI
         $sibling = $newParent;
 
         $wrapped->setPropertyValue($config['parent'], $sibling);
-
         $wrapped->setPropertyValue($config['left'], 0);
         $oid = spl_object_hash($node);
         $this->treeListener

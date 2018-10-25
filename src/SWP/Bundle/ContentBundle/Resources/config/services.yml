@@ -51,6 +51,22 @@ services:
         arguments:
             - "@swp_template_engine_context.factory.meta_factory"
             - "@swp.repository.author"
+        tags:
+            - { name: swp.meta_loader.add }
+
+    SWP\Bundle\ContentBundle\Loader\SlideshowLoader:
+        arguments:
+            - "@swp_template_engine_context.factory.meta_factory"
+            - "@swp.repository.slideshow"
+            - "@swp_template_engine_context"
+        tags:
+            - { name: swp.meta_loader.add }
+
+    SWP\Bundle\ContentBundle\Loader\SlideshowItemLoader:
+        arguments:
+            - "@swp.repository.slideshow_item"
+            - "@swp.repository.slideshow"
+            - "@swp_template_engine_context.factory.meta_factory"
             - "@swp_template_engine_context"
         tags:
             - { name: swp.meta_loader.add }
@@ -87,6 +103,16 @@ services:
             - { name: kernel.event_listener, event: swp.article.pre_create, method: onArticleCreate }
             - { name: kernel.event_listener, event: swp.article.pre_update, method: onArticleCreate }
 
+    SWP\Bundle\ContentBundle\EventListener\ProcessArticleSlideshowsListener:
+            arguments:
+                - '@swp.repository.media'
+                - '@swp.factory.media'
+                - '@swp_content_bundle.processor.article_body'
+                - '@swp.factory.slideshow'
+            tags:
+                - { name: kernel.event_listener, event: swp.article.pre_create, method: onArticleCreate }
+                - { name: kernel.event_listener, event: swp.article.pre_update, method: onArticleCreate }
+
     SWP\Bundle\ContentBundle\EventListener\SetProvidedPublishedDateListener:
         tags:
             - { name: kernel.event_listener, event: swp.article.pre_create, method: onArticleCreate }
@@ -108,6 +134,7 @@ services:
         class: '%swp.service.route.class%'
         arguments:
             - '@event_dispatcher'
+            - '@swp.repository.route'
 
     swp.service.article:
         class: '%swp.service.article.class%'
@@ -127,9 +154,28 @@ services:
             - '@swp.factory.file'
 
     swp_content_bundle.processor.article_body:
-        class: SWP\Bundle\ContentBundle\Processor\ArticleBodyProcessor
+        class: SWP\Bundle\ContentBundle\Processor\ArticleBodyProcessorChain
+
+    SWP\Bundle\ContentBundle\Processor\EmbeddedImageProcessor:
         arguments:
             - '@swp_content_bundle.manager.media'
+            - '@SWP\Bundle\ContentBundle\File\FileExtensionChecker'
+        tags:
+            - { name: swp.processor.article_body }
+
+    SWP\Bundle\ContentBundle\Processor\EmbeddedVideoProcessor:
+        arguments:
+            - '@SWP\Bundle\ContentBundle\File\FileExtensionChecker'
+            - '@swp_content_bundle.manager.media'
+        tags:
+            - { name: swp.processor.article_body }
+
+    SWP\Bundle\ContentBundle\Processor\EmbeddedAudioProcessor:
+        arguments:
+            - '@SWP\Bundle\ContentBundle\File\FileExtensionChecker'
+            - '@swp_content_bundle.manager.media'
+        tags:
+            - { name: swp.processor.article_body }
 
     router.symfony:
         parent: "router.default"
@@ -170,6 +216,7 @@ services:
         class: SWP\Bundle\ContentBundle\Hydrator\ArticleHydrator
         arguments:
              - '@swp.adder.article_source'
+             - '@swp.adder.article_keyword'
 
     swp_content_bundle.listener.article_publish:
         class: SWP\Bundle\ContentBundle\EventListener\ArticlePublishListener
@@ -194,6 +241,12 @@ services:
             - '@swp.service.article_source'
             - '@swp.repository.article_source'
 
+    swp.adder.article_keyword:
+        class: SWP\Bundle\ContentBundle\Service\ArticleKeywordAdder
+        arguments:
+            - '@swp.factory.keyword'
+            - '@swp.repository.keyword'
+
     swp.service.article_source:
         class: SWP\Bundle\ContentBundle\Service\ArticleSourceService
         arguments:
@@ -211,3 +264,14 @@ services:
     SWP\Bundle\ContentBundle\EventListener\PopulateArticleAuthorSlugListener:
         tags:
             - { name: doctrine.event_listener, event: prePersist }
+
+    SWP\Bundle\ContentBundle\File\FileExtensionChecker: ~
+
+    Aws\S3\S3Client:
+        arguments:
+            -
+                version: '%env(resolve:FS_AWS_S3_VERSION)%'
+                region: '%env(resolve:FS_AWS_S3_REGION)%'
+                credentials:
+                    key: '%env(resolve:FS_AWS_S3_KEY)%'
+                    secret: '%env(resolve:FS_AWS_S3_SECRET)%'

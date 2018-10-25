@@ -132,12 +132,13 @@ class Context implements \ArrayAccess
         if (file_exists($configsPath)) {
             if (!$this->metadataCache->contains('metadata_config_files')) {
                 $finder = new Finder();
-                $finder->in($configsPath)->files()->name('*.yml');
+                $finder->in($configsPath)->files()->name('*.{yaml,yml}');
                 $files = [];
                 foreach ($finder as $file) {
                     $files[] = $file->getRealPath();
                     $this->addNewConfig($file->getRealPath());
                 }
+
                 $this->metadataCache->save('metadata_config_files', $files);
             } else {
                 foreach ($this->metadataCache->fetch('metadata_config_files') as $file) {

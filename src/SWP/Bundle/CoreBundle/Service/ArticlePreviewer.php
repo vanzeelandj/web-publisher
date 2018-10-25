@@ -19,16 +19,17 @@ namespace SWP\Bundle\CoreBundle\Service;
 use SWP\Bundle\ContentBundle\Factory\ArticleFactoryInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
+use SWP\Bundle\ContentBundle\Processor\ArticleAuthorProcessor;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
-use SWP\Bundle\CoreBundle\Processor\ArticleBodyProcessorInterface;
+use SWP\Bundle\CoreBundle\Processor\ArticleMediaProcessorInterface;
 use SWP\Component\Common\Exception\NotFoundHttpException;
 
 final class ArticlePreviewer implements ArticlePreviewerInterface
 {
     /**
-     * @var ArticleBodyProcessorInterface
+     * @var ArticleMediaProcessorInterface
      */
-    private $articleBodyProcessor;
+    private $articleMediaProcessor;
 
     /**
      * @var ArticleFactoryInterface
@@ -44,16 +45,16 @@ final class ArticlePreviewer implements ArticlePreviewerInterface
      * ArticlePreviewer constructor.
      *
      * @param ArticleFactoryInterface               $articleFactory
-     * @param ArticleBodyProcessorInterface         $articleBodyProcessor
+     * @param ArticleMediaProcessorInterface        $articleMediaProcessor
      * @param ArticlePreviewTemplateHelperInterface $articlePreviewHelper
      */
     public function __construct(
         ArticleFactoryInterface $articleFactory,
-        ArticleBodyProcessorInterface $articleBodyProcessor,
+        ArticleMediaProcessorInterface $articleMediaProcessor,
         ArticlePreviewTemplateHelperInterface $articlePreviewHelper
     ) {
         $this->articleFactory = $articleFactory;
-        $this->articleBodyProcessor = $articleBodyProcessor;
+        $this->articleMediaProcessor = $articleMediaProcessor;
         $this->articlePreviewHelper = $articlePreviewHelper;
     }
 
@@ -63,7 +64,8 @@ final class ArticlePreviewer implements ArticlePreviewerInterface
     public function preview(PackageInterface $package, RouteInterface $route): ArticleInterface
     {
         $article = $this->articleFactory->createFromPackage($package);
-        $this->articleBodyProcessor->fillArticleMedia($package, $article);
+        $this->articleMediaProcessor->fillArticleMedia($package, $article);
+        ArticleAuthorProcessor::processArticleAuthors($article);
         $article->setRoute($route);
 
         if (null === $article->getRoute()) {

@@ -16,13 +16,15 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\CoreBundle\Model;
 
+use SWP\Bundle\AnalyticsBundle\Model\ArticleEventsTrait;
 use SWP\Bundle\ContentBundle\Model\Article as BaseArticle;
 use SWP\Component\MultiTenancy\Model\OrganizationAwareTrait;
 use SWP\Component\MultiTenancy\Model\TenantAwareTrait;
+use SWP\Component\Paywall\Model\PaywallSecuredTrait;
 
 class Article extends BaseArticle implements ArticleInterface
 {
-    use TenantAwareTrait, OrganizationAwareTrait;
+    use TenantAwareTrait, OrganizationAwareTrait, PaywallSecuredTrait, ArticleEventsTrait;
 
     /**
      * @var PackageInterface
@@ -115,5 +117,19 @@ class Article extends BaseArticle implements ArticleInterface
     public function setExternalArticle(ExternalArticleInterface $externalArticle): void
     {
         $this->externalArticle = $externalArticle;
+    }
+
+    public function getPackageExternalData()
+    {
+        if (null === $this->getPackage()->getExternalData()) {
+            return [];
+        }
+
+        $data = [];
+        foreach ($this->getPackage()->getExternalData() as $singleData) {
+            $data[$singleData->getKey()] = $singleData->getValue();
+        }
+
+        return $data;
     }
 }

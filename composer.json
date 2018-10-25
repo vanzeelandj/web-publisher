@@ -42,18 +42,23 @@
             "SWP\\Behat\\": "src/SWP/Behat/"
         },
         "exclude-from-classmap": [ "**/Tests/", "**/spec/" ],
-        "classmap": [ "app/AppKernel.php" ]
+        "classmap": ["src/Kernel.php"]
     },
     "require": {
         "php": "^7.1",
-        "symfony/symfony": "3.4.*",
+        "ext-json": "*",
+        "ext-curl": "*",
+        "ext-zip": "*",
+        "ext-gd": "*",
+        "ext-intl": "*",
+        "symfony/symfony": "3.4.14",
         "symfony/swiftmailer-bundle": "~3.0",
         "symfony/monolog-bundle": "~3.0",
         "sensio/distribution-bundle": "~v5.0",
         "sensio/framework-extra-bundle": "~3.0,>=3.0.2",
-        "doctrine/orm": "2.7.*",
         "doctrine/common": "2.8.*",
         "doctrine/dbal": "2.7.*",
+        "doctrine/orm": "^2.6",
         "doctrine/doctrine-bundle": "~1.8",
         "doctrine/inflector": "^1.2",
         "doctrine/doctrine-cache-bundle": "1.3.*",
@@ -61,10 +66,9 @@
         "php-http/guzzle6-adapter": "^v1.1",
         "twig/extensions": "~1.0",
         "twig/twig": "~2.4",
-        "emanueleminotto/twig-cache-bundle": "~1.0",
-        "incenteev/composer-parameter-handler": "~2.0",
-        "friendsofsymfony/http-cache": "2.0.0-beta2",
-        "friendsofsymfony/http-cache-bundle": "2.0.0-beta1 as 2.0.0",
+        "emanueleminotto/twig-cache-bundle": "dev-master",
+        "friendsofsymfony/http-cache": "^2.3",
+        "friendsofsymfony/http-cache-bundle": "^2.4",
         "friendsofsymfony/rest-bundle": "2.1.x-dev as 1.5",
         "friendsofsymfony/user-bundle": "^2.0",
         "oneup/flysystem-bundle": "^3.0",
@@ -78,7 +82,7 @@
         "sylius/theme-bundle": "^1.1",
         "superdesk/contentapi-sdk-php": "^1.0.0",
         "justinrainbow/json-schema": "~5.0",
-        "jms/translation-bundle": "^1.2",
+        "jms/translation-bundle": "^1.4.3",
         "hoa/mime": "3.16.01.15",
         "hoa/file": "1.16.01.15",
         "sentry/sentry-symfony": "^2.0",
@@ -97,15 +101,22 @@
         "cboden/ratchet": "^0.4.1",
         "evenement/evenement": "^3.0",
         "react/zmq": "dev-master",
-        "gos/web-socket-bundle": "^1.8"
+        "gos/web-socket-bundle": "^1.8",
+        "knplabs/knp-time-bundle": "^1.8",
+        "lexik/jwt-authentication-bundle": "^2.5",
+        "ramsey/uuid": "^3.8",
+        "league/flysystem-aws-s3-v3": "^1.0",
+        "litipk/flysystem-fallback-adapter": "^0.1.2",
+        "gesdinet/jwt-refresh-token-bundle": "^0.5.0",
+        "rdx/behat-variables": "^1.2"
     },
     "require-dev": {
         "roave/security-advisories": "dev-master",
         "phpspec/phpspec": "^4.2",
         "phpunit/phpunit": "^5.4.0",
-        "liip/functional-test-bundle": "^1.3",
-        "doctrine/doctrine-fixtures-bundle": "^2.2",
-        "nelmio/alice": "^2.1",
+        "liip/functional-test-bundle": "^2.0",
+        "doctrine/doctrine-fixtures-bundle": "^3.0",
+        "nelmio/alice": "^3.4",
         "matthiasnoback/symfony-dependency-injection-test": "^v1.1",
         "johnkary/phpunit-speedtrap": "^1.0",
         "symfony/phpunit-bridge": "^3.1",
@@ -117,7 +128,10 @@
         "behat/mink-browserkit-driver": "^1.3",
         "behat/symfony2-extension": "^2.1",
         "behatch/contexts": "^3.0",
-        "behat-extension/doctrine-data-fixtures-extension": "^4.0"
+        "behat-extension/doctrine-data-fixtures-extension": "^4.0",
+        "theofidry/alice-data-fixtures": "^1.0",
+        "doctrine/data-fixtures": "^1.3",
+        "symfony/dotenv": "^4.1"
     },
     "replace": {
         "swp/common": "self.version",
@@ -136,11 +150,12 @@
         "swp/revision": "self.version",
         "swp/elastic-search-bundle": "self.version",
         "swp/output-channel-bundle": "self.version",
-        "swp/output-channel": "self.version"
+        "swp/output-channel": "self.version",
+        "swp/paywall-bundle": "self.version",
+        "swp/paywall": "self.version"
     },
     "scripts": {
         "post-install-cmd": [
-            "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters",
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::buildBootstrap",
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::clearCache",
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::installAssets",
@@ -148,7 +163,6 @@
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::removeSymfonyStandardFiles"
         ],
         "post-update-cmd": [
-            "Incenteev\\ParameterHandler\\ScriptHandler::buildParameters",
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::buildBootstrap",
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::clearCache",
             "Sensio\\Bundle\\DistributionBundle\\Composer\\ScriptHandler::installAssets",
@@ -170,18 +184,6 @@
         },
         "symfony-app-dir": "app",
         "symfony-web-dir": "web",
-        "symfony-assets-install": "relative",
-        "incenteev-parameters": {
-            "file": "app/config/parameters.yml",
-            "env-map": {
-                "doctrine_cache_driver": "DOCTRINE_CACHE_DRIVER",
-                "env(DATABASE_USER)": "DATABASE_USER",
-                "env(DATABASE_HOST)": "DATABASE_HOST",
-                "env(DATABASE_PORT)": "DATABASE_PORT",
-                "env(DATABASE_NAME)": "DATABASE_NAME",
-                "env(SYMFONY_SECRET)": "SYMFONY_SECRET",
-                "env(SWP_DOMAIN)": "SWP_DOMAIN"
-            }
-        }
+        "symfony-assets-install": "relative"
     }
 }

@@ -1,0 +1,24 @@
+parameters:
+    env(APP_LOCALE): en
+    locale: '%env(resolve:APP_LOCALE)%'
+
+framework:
+    ide: 'phpstorm://open?file=%%f&line=%%l'
+    cache:
+        default_doctrine_provider: doctrine_cache.providers.main_cache
+    esi: { enabled: true }
+    translator:
+        fallbacks: ["%locale%"]
+        logging: false
+    secret: "%env(APP_SECRET)%"
+    router:
+        strict_requirements: ~
+    form:            ~
+    csrf_protection: ~
+    validation:      { enable_annotations: false }
+    templating:
+        engines: ['twig']
+    default_locale:  "%locale%"
+    trusted_hosts:   ~
+    fragments: { path: /_fragment }
+    http_method_override: true

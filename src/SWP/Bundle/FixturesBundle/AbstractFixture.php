@@ -15,8 +15,6 @@
 namespace SWP\Bundle\FixturesBundle;
 
 use Doctrine\Common\DataFixtures\AbstractFixture as BaseFixture;
-use Doctrine\Common\Persistence\ObjectManager;
-use Nelmio\Alice\Fixtures;
 use SWP\Component\MultiTenancy\Exception\TenantNotFoundException;
 use SWP\Component\MultiTenancy\Model\TenantInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
@@ -49,29 +47,19 @@ abstract class AbstractFixture extends BaseFixture implements ContainerAwareInte
      */
     public function getEnvironment()
     {
-        return $this->container->get('kernel')->getEnvironment();
+        return $this->container->getParameter('fixtures_type');
     }
 
     /**
-     * Loads Alice fixtures.
-     *
-     * @param array|string  $paths      Fixtures path(s)
-     * @param ObjectManager $manager    Object manager
-     * @param array         $parameters Extra parameters
-     */
-    public function loadFixtures($paths, $manager, $parameters = [])
-    {
-        return Fixtures::load($this->locateResources($paths), $manager, $parameters);
-    }
-
-    /**
-     * @param string $name
+     * @param $paths
      *
      * @return mixed
      */
-    public function getParameter($name)
+    public function loadFixtures($paths)
     {
-        return $this->container->getParameter($name);
+        $loader = $this->container->get('fidry_alice_data_fixtures.loader.doctrine');
+
+        return $loader->load($this->locateResources($paths));
     }
 
     /**

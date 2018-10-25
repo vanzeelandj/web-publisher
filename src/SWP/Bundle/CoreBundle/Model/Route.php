@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Superdesk Web Publisher Core Bundle.
  *
@@ -14,16 +16,19 @@
 
 namespace SWP\Bundle\CoreBundle\Model;
 
+use SWP\Bundle\AnalyticsBundle\Model\ArticleEventsTrait;
 use SWP\Component\MultiTenancy\Model\TenantAwareInterface;
 use SWP\Component\MultiTenancy\Model\TenantAwareTrait;
 use SWP\Bundle\ContentBundle\Model\Route as BaseRoute;
+use SWP\Component\Paywall\Model\PaywallSecuredInterface;
+use SWP\Component\Paywall\Model\PaywallSecuredTrait;
 
 /**
  * Class Route.
  */
-class Route extends BaseRoute implements TenantAwareInterface, ArticlesCountInterface
+class Route extends BaseRoute implements TenantAwareInterface, ArticlesCountInterface, PaywallSecuredInterface
 {
-    use TenantAwareTrait, ArticlesCountTrait;
+    use TenantAwareTrait, ArticlesCountTrait, PaywallSecuredTrait, ArticleEventsTrait;
 
     /**
      * {@inheritdoc}

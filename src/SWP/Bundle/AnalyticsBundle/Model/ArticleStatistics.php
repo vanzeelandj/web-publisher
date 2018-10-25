@@ -48,6 +48,11 @@ class ArticleStatistics implements ArticleStatisticsInterface, TimestampableInte
     protected $pageViewsNumber = 0;
 
     /**
+     * @var float
+     */
+    protected $internalClickRate = 0;
+
+    /**
      * @var Collection
      */
     protected $events;
@@ -89,6 +94,10 @@ class ArticleStatistics implements ArticleStatisticsInterface, TimestampableInte
      */
     public function getImpressionsNumber(): int
     {
+        if (null === $this->impressionsNumber) {
+            return 0;
+        }
+
         return $this->impressionsNumber;
     }
 
@@ -105,6 +114,10 @@ class ArticleStatistics implements ArticleStatisticsInterface, TimestampableInte
      */
     public function getPageViewsNumber(): int
     {
+        if (null === $this->pageViewsNumber) {
+            return 0;
+        }
+
         return $this->pageViewsNumber;
     }
 
@@ -122,6 +135,11 @@ class ArticleStatistics implements ArticleStatisticsInterface, TimestampableInte
     public function increasePageViewsNumber(): void
     {
         $this->pageViewsNumber = $this->pageViewsNumber + 1;
+    }
+
+    public function increaseImpressionsNumber(): void
+    {
+        $this->impressionsNumber = $this->impressionsNumber + 1;
     }
 
     /**
@@ -146,5 +164,15 @@ class ArticleStatistics implements ArticleStatisticsInterface, TimestampableInte
     public function addEvent(ArticleEventInterface $articleEvent): void
     {
         $this->events->add($articleEvent);
+    }
+
+    public function getInternalClickRate(): float
+    {
+        return $this->internalClickRate;
+    }
+
+    public function setInternalClickRate(float $internalClickRate): void
+    {
+        $this->internalClickRate = $internalClickRate;
     }
 }

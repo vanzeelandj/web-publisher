@@ -31,9 +31,9 @@ class ContentListItemRepository extends SortableEntityRepository implements Cont
      */
     public function removeItems(ContentListInterface $contentList)
     {
-        $queryBuilder = $this->createQueryBuilder('a')
+        $queryBuilder = $this->createQueryBuilder('i')
             ->delete()
-            ->where('a.contentList = :contentList')
+            ->where('i.contentList = :contentList')
             ->setParameter('contentList', $contentList);
 
         $queryBuilder->getQuery()->execute();
@@ -60,6 +60,14 @@ class ContentListItemRepository extends SortableEntityRepository implements Cont
     public function getPaginatedByCriteria(Criteria $criteria, array $sorting = [], PaginationData $paginationData = null)
     {
         $queryBuilder = $this->getSortedItems($criteria, $sorting, ['contentList' => $criteria->get('contentList')]);
+
+        if ($criteria->has('exclude_content')) {
+            $excludeContent = $criteria->get('exclude_content');
+            if (\is_numeric($excludeContent)) {
+                $excludeContent = [$excludeContent];
+            }
+            $queryBuilder->andWhere($queryBuilder->expr()->notIn('n.content', $excludeContent));
+        }
 
         if (null === $paginationData) {
             $paginator = new Paginator();

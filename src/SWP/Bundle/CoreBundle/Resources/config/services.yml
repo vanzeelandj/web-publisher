@@ -8,6 +8,11 @@ services:
     _defaults:
         public: true
 
+    swp_core.factory.version:
+        arguments:
+            - 'SWP\Bundle\CoreBundle\Version\Version'
+        class: SWP\Bundle\CoreBundle\Factory\VersionFactory
+
     swp_core.detection.device_detection:
         class: SWP\Bundle\CoreBundle\Detection\DeviceDetection
 
@@ -168,7 +173,7 @@ services:
     swp_core.security.session.domain_dynamic_storage:
         class: SWP\Bundle\CoreBundle\Security\Storage\DynamicDomainSessionStorage
         arguments:
-            - "%env(SWP_DOMAIN)%"
+            - "@swp_multi_tenancy.tenant_context"
 
     swp_core.listener.article_rules_subscriber:
         class: SWP\Bundle\CoreBundle\EventSubscriber\ProcessArticleRulesSubscriber
@@ -190,6 +195,13 @@ services:
             - { name: kernel.event_listener, event: swp.article.publish, method: addArticleToList }
             - { name: kernel.event_listener, event: swp.article.publish, method: addArticleToBucket }
 
+    SWP\Bundle\CoreBundle\EventSubscriber\HandleArticleChangeSubscriber:
+        arguments:
+            - "@swp.repository.content_list_item"
+            - "@doctrine.orm.entity_manager"
+        tags:
+            - { name: kernel.event_subscriber }
+
     swp_core.listener.revision_subscriber:
         class: SWP\Bundle\CoreBundle\EventSubscriber\RevisionsSubscriber
         arguments:
@@ -209,7 +221,14 @@ services:
     swp_core.listener.tenant_not_found:
         class: SWP\Bundle\CoreBundle\EventListener\TenantNotFoundExceptionListener
         tags:
-            - { name: kernel.event_listener, event: kernel.exception }
+            - { name: kernel.event_listener, event: kernel.exception, priority: 100 }
+
+    SWP\Bundle\CoreBundle\EventListener\CustomPublisherHeaderListener:
+        arguments:
+            - '%kernel.debug%'
+            - '@swp_core.factory.version'
+        tags:
+            - { name: kernel.event_listener, event: kernel.response, priority: 1 }
 
     swp_core.subscriber.http_cache:
         class: SWP\Bundle\CoreBundle\EventSubscriber\HttpCacheSubscriber
@@ -226,6 +245,7 @@ services:
             - "@swp_multi_tenancy.tenant_context"
             - "@swp.repository.tenant"
             - "@event_dispatcher"
+            - "@security.helper"
 
     swp.security.preview_token_authenticator:
         class: SWP\Bundle\CoreBundle\Security\Authenticator\PreviewTokenAuthenticator
@@ -489,7 +509,7 @@ services:
         arguments:
             - {'Takeit\Bundle\AmpHtmlBundle\Model\AmpInterface': "%takeit_amp_html.configuration.model.class%"}
             - '@swp_template_engine_context'
-            - '@swp_content_bundle.processor.article_body'
+            - '@SWP\Bundle\CoreBundle\Processor\ArticleMediaProcessor'
             - '@swp.repository.package'
             - '@swp.factory.article'
             - '@?doctrine'
@@ -511,6 +531,7 @@ services:
             - '@SWP\Bundle\AnalyticsBundle\Services\ArticleStatisticsService'
             - '@swp_multi_tenancy.tenant_resolver'
             - '@swp_multi_tenancy.tenant_context'
+            - '@router'
 
     swp_core.article.populator:
         class: SWP\Bundle\CoreBundle\Rule\Populator\ArticlePopulator
@@ -564,7 +585,7 @@ services:
     SWP\Bundle\CoreBundle\Service\ArticlePreviewer:
         arguments:
             - '@swp.factory.article'
-            - '@swp_content_bundle.processor.article_body'
+            - '@SWP\Bundle\CoreBundle\Processor\ArticleMediaProcessor'
             - '@SWP\Bundle\CoreBundle\Service\ArticlePreviewTemplateHelper'
 
     swp.random_string_generator:
@@ -579,6 +600,10 @@ services:
             - { name: kernel.event_listener, event: swp.article.post_update, method: update }
             - { name: kernel.event_listener, event: swp.article.published, method: publish }
             - { name: kernel.event_listener, event: swp.article.unpublished, method: unpublish }
+
+    SWP\Bundle\CoreBundle\EventListener\SoftdeletableListener:
+        tags:
+            - { name: doctrine.event_listener, event: preRemove, priority: 10 }
 
     SWP\Bundle\CoreBundle\EventListener\DuplicatedSlugListener:
         arguments:
@@ -613,3 +638,47 @@ services:
     SWP\Bundle\CoreBundle\Serializer\SettingSerializationSubscriber:
         tags:
             - { name: jms_serializer.event_subscriber }
+
+    SWP\Bundle\CoreBundle\Provider\SubscriptionsProvider:
+        public: false
+        arguments:
+            - '@swp.paywall.adapter'
+
+    SWP\Bundle\CoreBundle\Provider\CachedSubscriptionsProvider:
+        arguments:
+            - '%env(resolve:SUBSCRIPTIONS_CACHE_LIFETIME)%'
+            - '@SWP\Bundle\CoreBundle\Provider\SubscriptionsProvider'
+            - '@doctrine_cache.providers.main_cache'
+            - '@swp_multi_tenancy.tenant_context'
+
+    SWP\Bundle\CoreBundle\Loader\SubscriptionLoader:
+        arguments:
+            - '@swp_template_engine_context.factory.meta_factory'
+            - '@SWP\Bundle\CoreBundle\Provider\CachedSubscriptionsProvider'
+        tags:
+            - { name: swp.meta_loader.add }
+
+    SWP\Bundle\CoreBundle\HttpCache\HttpCacheArticleTagGenerator: ~
+    SWP\Bundle\CoreBundle\HttpCache\HttpCacheRouteTagGenerator: ~
+
+    SWP\Bundle\CoreBundle\EventListener\HttpCacheTaggerListener:
+        arguments:
+            - '@fos_http_cache.http.symfony_response_tagger'
+            - '@SWP\Bundle\CoreBundle\HttpCache\HttpCacheArticleTagGenerator'
+            - '@SWP\Bundle\CoreBundle\HttpCache\HttpCacheRouteTagGenerator'
+        tags:
+            - { name: kernel.event_listener, event: kernel.response, method: onKernelResponse }
+
+    SWP\Bundle\CoreBundle\EventListener\InvalidateHttpCacheTagsListener:
+        arguments:
+            - '@fos_http_cache.cache_manager'
+            - '@SWP\Bundle\CoreBundle\HttpCache\HttpCacheArticleTagGenerator'
+            - '@SWP\Bundle\CoreBundle\HttpCache\HttpCacheRouteTagGenerator'
+        tags:
+            - { name: kernel.event_listener, event: swp.article.post_update, method: onPostUpdate }
+            - { name: kernel.event_listener, event: swp.article.unpublished, method: onPostUpdate }
+
+    SWP\Bundle\CoreBundle\Processor\ArticleMediaProcessor:
+        arguments:
+            - '@swp.factory.media'
+            - '@swp_content_bundle.processor.article_body'

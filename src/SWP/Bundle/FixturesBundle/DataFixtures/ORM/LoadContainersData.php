@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Superdesk Web Publisher Fixtures Bundle.
  *
@@ -16,7 +18,6 @@ namespace SWP\Bundle\FixturesBundle\DataFixtures\ORM;
 
 use Doctrine\Common\DataFixtures\FixtureInterface;
 use Doctrine\Common\DataFixtures\OrderedFixtureInterface;
-use SWP\Bundle\CoreBundle\Model\Container;
 use SWP\Bundle\FixturesBundle\AbstractFixture;
 use Doctrine\Common\Persistence\ObjectManager;
 
@@ -25,11 +26,11 @@ class LoadContainersData extends AbstractFixture implements FixtureInterface, Or
     /**
      * {@inheritdoc}
      */
-    public function load(ObjectManager $manager)
+    public function load(ObjectManager $manager): void
     {
         $env = $this->getEnvironment();
-        if ('test' !== $env) {
-            $revision = $manager->merge($this->getReference('defult_tenant_revision'));
+        if ('dev' === $env) {
+            $revision = $manager->merge($this->getReference('default_tenant_revision'));
 
             $container1 = $this->container->get('swp.factory.container')->create();
             $container1->setName('mainNav');
@@ -62,13 +63,12 @@ class LoadContainersData extends AbstractFixture implements FixtureInterface, Or
             $this->loadFixtures(
                 [
                     '@SWPFixturesBundle/Resources/fixtures/ORM/'.$env.'/Container.yml',
-                ],
-                $manager
+                ]
             );
         }
     }
 
-    public function getOrder()
+    public function getOrder(): int
     {
         return 2;
     }

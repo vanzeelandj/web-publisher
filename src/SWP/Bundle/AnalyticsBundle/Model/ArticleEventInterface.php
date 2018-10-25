@@ -15,11 +15,10 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\AnalyticsBundle\Model;
 
+use SWP\Bundle\ContentBundle\Model\RouteInterface;
+use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Component\Storage\Model\PersistableInterface;
 
-/**
- * Interface ArticleEventInterface.
- */
 interface ArticleEventInterface extends PersistableInterface
 {
     const ACTION_IMPRESSION = 'impression';
@@ -30,33 +29,37 @@ interface ArticleEventInterface extends PersistableInterface
 
     const ACTION_SCROLL_DEPTH = 'scrolldepth';
 
-    /**
-     * @return string
-     */
+    const IMPRESSION_TYPE_HOMEPAGE = 'homepage';
+
+    const IMPRESSION_TYPE_COLLECTION = 'collection';
+
+    const IMPRESSION_TYPE_ARTICLE = 'article';
+
+    const PAGEVIEW_SOURCE_INTERNAL = 'internal';
+
+    const PAGEVIEW_SOURCE_EXTERNAL = 'external';
+
     public function getAction(): string;
 
-    /**
-     * @param string $action
-     */
     public function setAction(string $action): void;
 
-    /**
-     * @return null|string
-     */
-    public function getValue(): ?string;
+    public function getPageViewSource(): ?string;
 
-    /**
-     * @param null|string $value
-     */
-    public function setValue(?string $value): void;
+    public function setPageViewSource(string $pageViewSource): void;
 
-    /**
-     * @return ArticleStatisticsInterface
-     */
+    public function getImpressionRoute(): ?RouteInterface;
+
+    public function setImpressionRoute(?RouteInterface $impressionRoute): void;
+
+    public function getImpressionArticle(): ?ArticleInterface;
+
+    public function setImpressionArticle(?ArticleInterface $impressionArticle): void;
+
+    public function getImpressionType(): ?string;
+
+    public function setImpressionType(?string $impressionType): void;
+
     public function getArticleStatistics(): ArticleStatisticsInterface;
 
-    /**
-     * @param ArticleStatisticsInterface $articleStatistics
-     */
     public function setArticleStatistics(ArticleStatisticsInterface $articleStatistics): void;
 }

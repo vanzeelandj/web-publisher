@@ -27,9 +27,6 @@ class WebTestCase extends BaseWebTestCase
     protected function initDatabase()
     {
         $this->clearMetadataCache();
-
-        $this->runCommand('doctrine:schema:drop', ['--force' => true, '--env' => 'test'], true);
-        $this->runCommand('doctrine:migrations:migrate', ['--force' => true, '--env' => 'test'], true);
     }
 
     /**
@@ -66,6 +63,7 @@ class WebTestCase extends BaseWebTestCase
 
         return $this->loadFixtures(
             $registry->getFixtures($fixtures),
+            false,
             null,
             $env
         )->getReferenceRepository();

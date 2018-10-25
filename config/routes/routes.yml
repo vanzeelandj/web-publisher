@@ -1,0 +1,48 @@
+swp_analytics:
+    resource: "@SWPAnalyticsBundle/Resources/config/routing.yml"
+
+swp_content:
+    resource: "@SWPContentBundle/Controller/"
+    type:     annotation
+
+security_login_check:
+   path: /security/login_check
+
+security_logout:
+   path: /security/logout
+
+swp_core:
+    resource: "@SWPCoreBundle/Controller/"
+    type:     annotation
+
+swp_facebook_instant_articles:
+    resource: "@SWPFacebookInstantArticlesBundle/Resources/config/routing.yml"
+
+swp_user:
+    resource: "@SWPUserBundle/Resources/config/routing.yml"
+
+swp_settings:
+    resource: "@SWPSettingsBundle/Resources/config/routing.yml"
+
+NelmioApiDocBundle:
+    resource: "@NelmioApiDocBundle/Resources/config/routing.yml"
+    prefix:   /api/doc
+
+swp_elasticsearch:
+    resource: "@SWPElasticSearchBundle/Controller/Api"
+    type:     annotation
+
+remove_trailing_slash:
+    path: /{url}
+    defaults: { _controller: SWPCoreBundle:Redirecting:removeTrailingSlash }
+    requirements:
+        url: .*/$
+    methods: [GET]
+
+swp_redirecting_extra_data:
+    path: /redirecting/extra/{key}/{value}
+    defaults: { _controller: SWPCoreBundle:Redirecting:redirectBasedOnExtraData }
+    requirements:
+        key: \w+
+        value: \+?\w+
+    methods: [GET]

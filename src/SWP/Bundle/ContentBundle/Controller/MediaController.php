@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Superdesk Web Publisher Content Bundle.
  *
@@ -14,8 +16,10 @@
 
 namespace SWP\Bundle\ContentBundle\Controller;
 
+use SWP\Bundle\ContentBundle\File\FileExtensionChecker;
+use SWP\Bundle\ContentBundle\File\FileExtensionCheckerInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleMedia;
-use SWP\Bundle\ContentBundle\Model\Image;
+use SWP\Bundle\ContentBundle\Provider\FileProvider;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -34,7 +38,7 @@ class MediaController extends Controller
      * @Route("/media/{mediaId}.{extension}", options={"expose"=true}, requirements={"mediaId"=".+"}, name="swp_media_get")
      * @Method("GET")
      */
-    public function getAction(Request $request, $mediaId)
+    public function getAction(Request $request, string $mediaId, string $extension)
     {
         $cacheProvider = $this->get('doctrine_cache.providers.main_cache');
         $cacheKey = md5(serialize(['media', $mediaId]));
@@ -42,13 +46,19 @@ class MediaController extends Controller
             return $cacheProvider->fetch($cacheKey);
         }
 
-        $media = $this->get('swp.repository.image')->findImageByAssetId(ArticleMedia::handleMediaId($mediaId));
+        $fileProvider = $this->container->get(FileProvider::class);
+        $media = $fileProvider->getFile(ArticleMedia::handleMediaId($mediaId), $extension);
+
         if (null === $media) {
             throw new NotFoundHttpException('Media was not found.');
         }
 
         $response = new Response();
-        if ($media instanceof Image) {
+        /** @var FileExtensionCheckerInterface $fileExtensionChecker */
+        $fileExtensionChecker = $this->container->get(FileExtensionChecker::class);
+        $mimeType = Mime::getMimeFromExtension($extension);
+
+        if (!$fileExtensionChecker->isAttachment($mimeType)) {
             $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_INLINE, str_replace('/', '_', $mediaId.'.'.$media->getFileExtension()));
         } else {
             $disposition = $response->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, str_replace('/', '_', $mediaId.'.'.$media->getFileExtension()));

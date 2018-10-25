@@ -44,9 +44,15 @@ class ArticleLoaderTest extends WebTestCase
     {
         $template = '{% gimmelist article from articles with {keywords: ["car"]} %} {% for keyword in article.keywords %} {{ keyword }} {% endfor %} {% endgimmelist %}';
         $result = $this->getRendered($template);
-
         self::assertContains('car', $result);
-        self::assertNotContains('mazda', $result);
+
+        $template = '{% gimmelist article from articles with {keywords: ["big-city"]} %} {% for keyword in article.keywords %} {{ keyword }} {% endfor %} {% endgimmelist %}';
+        $result = $this->getRendered($template);
+        self::assertContains('Big city', $result);
+
+        $template = '{% gimmelist article from articles with {keywords: ["mazda"]} %} {% for keyword in article.keywords %} {{ keyword }} {% endfor %} {% endgimmelist %}';
+        $result = $this->getRendered($template);
+        self::assertNotContains('car', $result);
     }
 
     public function testFilteringByMultipleRoutes()
@@ -135,7 +141,7 @@ class ArticleLoaderTest extends WebTestCase
         self::assertNotContains('John Doe', $result);
     }
 
-    public function testFilteringByInvludedAndExcludedAuthors()
+    public function testFilteringByIncludedAndExcludedAuthors()
     {
         $template = '{% gimmelist article from articles with {author: ["Tom"]} without {author: ["Test Person", "John Doe"]} %} {% for author in article.authors %} {{ author.name }} {% endfor %} {% endgimmelist %}';
         $result = $this->getRendered($template);
@@ -143,6 +149,14 @@ class ArticleLoaderTest extends WebTestCase
         self::assertContains('Tom', $result);
         self::assertNotContains('Test Person', $result);
         self::assertNotContains('John Doe', $result);
+    }
+
+    public function testFilteringByExcludedArticles()
+    {
+        $template = '{% gimme article with {id: 1} %}{% gimmelist article from articles without {article: [article, 2]} %} {{ article.slug }} (id: {{ article.id }}) {% endgimmelist %}{% endgimme %}';
+        $result = $this->getRendered($template);
+
+        self::assertEquals(' test-article (id: 3)  features (id: 4)  features-client1 (id: 5) ', $result);
     }
 
     private function getRendered($template, $context = [])
