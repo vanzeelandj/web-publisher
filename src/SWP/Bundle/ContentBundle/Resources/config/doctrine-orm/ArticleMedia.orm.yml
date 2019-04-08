@@ -8,6 +8,10 @@ SWP\Bundle\ContentBundle\Model\ArticleMedia:
             id: true
             generator:
                 strategy: IDENTITY
+    gedmo:
+        soft_deleteable:
+            field_name: deletedAt
+            time_aware: false
     fields:
         key:
             type: string
@@ -28,10 +32,22 @@ SWP\Bundle\ContentBundle\Model\ArticleMedia:
         usageTerms:
             type: text
             nullable: true
+        headline:
+            type: text
+            nullable: true
+        copyrightNotice:
+            type: string
+            nullable: true
+        copyrightHolder:
+            type: string
+            nullable: true
         createdAt:
             type: date
         updatedAt:
             type: date
+            nullable: true
+        deletedAt:
+            type: datetime
             nullable: true
     oneToMany:
         renditions:

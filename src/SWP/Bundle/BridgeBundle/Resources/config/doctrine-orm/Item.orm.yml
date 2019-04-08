@@ -19,6 +19,7 @@ SWP\Component\Bridge\Model\Item:
             nullable: true
         guid:
             type: string
+            length: 400
         evolvedFrom:
             type: string
             nullable: true
@@ -61,8 +62,23 @@ SWP\Component\Bridge\Model\Item:
         body:
             type: text
             nullable: true
+        bodyText:
+            type: text
+            nullable: true
+        usageTerms:
+            type: string
+            nullable: true
+        copyrightNotice:
+            type: string
+            nullable: true
+        copyrightHolder:
+            type: string
+            nullable: true
         extra:
             type: array
+            nullable: true
+        firstPublishedAt:
+            type: datetime
             nullable: true
         createdAt:
             type: datetime

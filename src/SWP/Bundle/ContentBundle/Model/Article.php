@@ -19,7 +19,9 @@ namespace SWP\Bundle\ContentBundle\Model;
 use Behat\Transliterator\Transliterator;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use SWP\Bundle\ContentBundle\Doctrine\ORM\TimestampableCancelTrait;
 use SWP\Component\Bridge\Model\AuthorsAwareTrait;
+use SWP\Component\Common\Model\DateTime;
 use SWP\Component\Common\Model\SoftDeletableTrait;
 use SWP\Component\Common\Model\TimestampableTrait;
 use SWP\Component\Common\Model\TranslatableTrait;
@@ -29,7 +31,7 @@ use SWP\Component\Common\Model\TranslatableTrait;
  */
 class Article implements ArticleInterface
 {
-    use TranslatableTrait, SoftDeletableTrait, TimestampableTrait, AuthorsAwareTrait, KeywordsAwareTrait;
+    use TranslatableTrait, SoftDeletableTrait, TimestampableTrait, AuthorsAwareTrait, KeywordsAwareTrait, RelatedArticlesAwareTrait, TimestampableCancelTrait;
 
     /**
      * @var mixed
@@ -126,143 +128,93 @@ class Article implements ArticleInterface
      */
     protected $slideshows;
 
-    /**
-     * Article constructor.
-     */
     public function __construct()
     {
-        $this->setCreatedAt(new \DateTime());
+        $this->createdAt = DateTime::getCurrentDateTime();
         $this->setPublishable(false);
         $this->setMedia(new ArrayCollection());
         $this->sources = new ArrayCollection();
         $this->authors = new ArrayCollection();
         $this->keywords = new ArrayCollection();
         $this->slideshows = new ArrayCollection();
+        $this->relatedArticles = new ArrayCollection();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setPublishStartDate(\DateTime $startDate = null)
     {
         $this->publishStartDate = $startDate;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getPublishStartDate()
     {
         return $this->publishStartDate;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setPublishEndDate(\DateTime $endDate = null)
     {
         $this->publishEndDate = $endDate;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getPublishEndDate()
     {
         return $this->publishEndDate;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isPublishable()
     {
         return $this->isPublishable;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setPublishable($boolean)
     {
         $this->isPublishable = $boolean;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isPublished()
     {
         return ArticleInterface::STATUS_PUBLISHED === $this->getStatus();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setRoute(RouteInterface $route = null)
     {
         $this->route = $route;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getRoute()
     {
         return $this->route;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getId()
     {
         return $this->id;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getBody()
     {
         return $this->body;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setBody($body)
     {
-        $this->body = $body;
+        $this->body = \trim($body);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getMedia()
     {
         return $this->media;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setMedia(Collection $media)
     {
         $this->media = $media;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getTitle()
     {
         return $this->title;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setTitle($title)
     {
         $this->title = $title;
@@ -276,17 +228,11 @@ class Article implements ArticleInterface
         $this->setSlug($this->title);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getSlug()
     {
         return $this->slug;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setSlug($slug)
     {
         $urlizedSlug = Transliterator::urlize($slug);
@@ -301,65 +247,41 @@ class Article implements ArticleInterface
         $this->slug = $urlizedSlug;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getPublishedAt()
     {
         return $this->publishedAt;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setPublishedAt(\DateTime $publishedAt)
     {
         $this->publishedAt = $publishedAt;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getStatus()
     {
         return $this->status;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setStatus($status)
     {
         $this->status = $status;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getTemplateName()
     {
         return $this->templateName;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setTemplateName($templateName)
     {
         $this->templateName = $templateName;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getMetadata()
     {
         return $this->metadata;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getMetadataByKey(string $key)
     {
         $metadata = $this->getMetadata();
@@ -369,73 +291,46 @@ class Article implements ArticleInterface
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setMetadata(array $metadata)
     {
         $this->metadata = $metadata;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getSubjectType()
     {
         return 'article';
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getLead()
     {
         return $this->lead;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setLead($lead)
     {
         $this->lead = $lead;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getFeatureMedia()
     {
         return $this->featureMedia;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setFeatureMedia(ArticleMediaInterface $featureMedia = null)
     {
         $this->featureMedia = $featureMedia;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getCode(): string
     {
         return $this->code;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setCode(string $code)
     {
         $this->code = $code;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function addSourceReference(ArticleSourceReferenceInterface $source)
     {
         if (!$this->hasSourceReference($source)) {
@@ -443,25 +338,16 @@ class Article implements ArticleInterface
         }
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function removeSourceReference(ArticleSourceReferenceInterface $source)
     {
         $this->sources->removeElement($source);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function hasSourceReference(ArticleSourceReferenceInterface $source): bool
     {
         return $this->sources->contains($source);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getSources(): Collection
     {
         if (0 < $this->sources->count()) {
@@ -477,17 +363,11 @@ class Article implements ArticleInterface
         return $this->sources;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getExtra(): ?array
     {
         return $this->extra;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setExtra(?array $extra): void
     {
         $this->extra = $extra;

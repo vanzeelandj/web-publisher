@@ -22,14 +22,8 @@ use SWP\Bundle\CoreBundle\Model\ArticleEvent;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Component\Common\Criteria\Criteria;
 
-/**
- * Class ArticleRepository.
- */
 class ArticleRepository extends ContentBundleArticleRepository implements ArticleRepositoryInterface
 {
-    /**
-     * {@inheritdoc}
-     */
     public function getByCriteria(Criteria $criteria, array $sorting): QueryBuilder
     {
         $qb = parent::getByCriteria($criteria, $sorting)
@@ -39,9 +33,6 @@ class ArticleRepository extends ContentBundleArticleRepository implements Articl
         return $qb;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getArticlesByCriteriaIds(Criteria $criteria): QueryBuilder
     {
         $queryBuilder = parent::getArticlesByCriteriaIds($criteria)
@@ -51,9 +42,6 @@ class ArticleRepository extends ContentBundleArticleRepository implements Articl
         return $queryBuilder;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getArticleBySlugForPackage(string $slug, PackageInterface $package): QueryBuilder
     {
         $queryBuilder = $this->createQueryBuilder('a');
@@ -67,9 +55,17 @@ class ArticleRepository extends ContentBundleArticleRepository implements Articl
         return $queryBuilder;
     }
 
-    /**
-     * {@inheritdoc}
-     */
+    public function getArticlesByPackage(PackageInterface $package): QueryBuilder
+    {
+        $queryBuilder = $this->createQueryBuilder('a');
+        $queryBuilder
+            ->andWhere('a.package = :package')
+            ->setParameter('package', $package)
+        ;
+
+        return $queryBuilder;
+    }
+
     public function getArticleByPackageExtraData(string $key, string $value): QueryBuilder
     {
         $queryBuilder = $this->createQueryBuilder('a');
@@ -84,38 +80,47 @@ class ArticleRepository extends ContentBundleArticleRepository implements Articl
         return $queryBuilder;
     }
 
-    /**
-     * {@inheritdoc}
-     */
     protected function applySorting(QueryBuilder $queryBuilder, array $sorting, string $alias, Criteria $criteria = null)
     {
-        if (isset($sorting['pageViews']) && !empty($sorting['pageViews'])) {
-            if ($criteria instanceof Criteria && null !== $dateRange = $criteria->get('dateRange', null)) {
-                $start = new \DateTime();
-                $start->setTimestamp(strtotime($dateRange[0]));
-                $start->setTime(23, 59, 59);
-                $end = new \DateTime();
-                $end->setTimestamp(strtotime($dateRange[1]));
-                $end->setTime(0, 0, 0);
+        $properties = \array_merge($this->getClassMetadata()->getFieldNames(), $this->getClassMetadata()->getAssociationNames());
+        foreach ($sorting as $property => $order) {
+            if ('pageViews' === $property && !empty($order)) {
+                if ($criteria instanceof Criteria && null !== $dateRange = $criteria->get('dateRange', null)) {
+                    $start = new \DateTime();
+                    $start->setTimestamp(strtotime($dateRange[0]));
+                    $start->setTime(23, 59, 59);
+                    $end = new \DateTime();
+                    $end->setTimestamp(strtotime($dateRange[1]));
+                    $end->setTime(0, 0, 0);
 
-                $articleEventsQuery = $this->_em->createQueryBuilder()
-                    ->from(ArticleEvent::class, 'ae')
-                    ->select('COUNT(ae.id)')
-                    ->where('ae.createdAt <= :start')
-                    ->andWhere('ae.createdAt >= :end')
-                    ->andWhere('ae.articleStatistics = stats.id');
+                    $articleEventsQuery = $this->_em->createQueryBuilder()
+                        ->from(ArticleEvent::class, 'ae')
+                        ->select('COUNT(ae.id)')
+                        ->where('ae.createdAt <= :start')
+                        ->andWhere('ae.createdAt >= :end')
+                        ->andWhere('ae.articleStatistics = stats.id');
 
-                $queryBuilder
-                    ->addSelect(sprintf('(%s) as HIDDEN events_count', $articleEventsQuery))
-                    ->setParameter('start', $start)
-                    ->setParameter('end', $end);
-                $queryBuilder->addOrderBy('events_count', $sorting['pageViews']);
-            } else {
-                $queryBuilder->addOrderBy($this->getPropertyName('pageViewsNumber', 'stats'), $sorting['pageViews']);
+                    $queryBuilder
+                        ->addSelect(sprintf('(%s) as HIDDEN events_count', $articleEventsQuery))
+                        ->setParameter('start', $start)
+                        ->setParameter('end', $end);
+                    $queryBuilder->addOrderBy('events_count', $sorting['pageViews']);
+                } else {
+                    $queryBuilder->addOrderBy($this->getPropertyName('pageViewsNumber', 'stats'), $sorting['pageViews']);
+                }
+                unset($sorting['pageViews']);
+
+                continue;
             }
-            unset($sorting['pageViews']);
-        }
 
-        return parent::applySorting($queryBuilder, $sorting, $alias);
+            if (!\in_array($property, $properties)) {
+                continue;
+            }
+
+            if (!empty($order)) {
+                $queryBuilder->addOrderBy($this->getPropertyName($property, $alias), $order);
+                unset($sorting[$property]);
+            }
+        }
     }
 }

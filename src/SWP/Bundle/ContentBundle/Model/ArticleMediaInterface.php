@@ -16,12 +16,13 @@ namespace SWP\Bundle\ContentBundle\Model;
 
 use Doctrine\Common\Collections\ArrayCollection;
 use SWP\Component\Bridge\Model\ItemInterface;
+use SWP\Component\Common\Model\SoftDeletableInterface;
 use SWP\Component\Storage\Model\PersistableInterface;
 
 /**
  * Interface ArticleMediaInterface.
  */
-interface ArticleMediaInterface extends PersistableInterface
+interface ArticleMediaInterface extends PersistableInterface, SoftDeletableInterface
 {
     const PATH_MEDIA = 'media';
 
@@ -32,10 +33,7 @@ interface ArticleMediaInterface extends PersistableInterface
      */
     public function getRenditions();
 
-    /**
-     * @param ImageRendition $rendition
-     */
-    public function addRendition(ImageRendition $rendition);
+    public function addRendition(ImageRenditionInterface $rendition);
 
     /**
      * @param ArrayCollection $renditions
@@ -183,4 +181,16 @@ interface ArticleMediaInterface extends PersistableInterface
      * @return mixed
      */
     public static function getOriginalMediaId(string $mediaId);
+
+    public function getHeadline(): ?string;
+
+    public function setHeadline(?string $headline): void;
+
+    public function getCopyrightNotice(): ?string;
+
+    public function setCopyrightNotice(?string $copyrightNotice): void;
+
+    public function getCopyrightHolder(): ?string;
+
+    public function setCopyrightHolder(?string $copyrightHolder): void;
 }

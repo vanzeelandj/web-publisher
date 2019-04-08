@@ -14,11 +14,13 @@
 
 namespace SWP\Bundle\ContentBundle\DependencyInjection\Compiler;
 
+use SWP\Bundle\ContentBundle\Provider\ORM\ArticleMediaAssetProvider;
 use SWP\Component\Storage\Factory\Factory;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Parameter;
+use Symfony\Component\DependencyInjection\Reference;
 
 class RegisterMediaFactoryPass implements CompilerPassInterface
 {
@@ -41,9 +43,11 @@ class RegisterMediaFactoryPass implements CompilerPassInterface
         $mediaFactoryDefinition = new Definition(
             $container->getParameter('swp.factory.media.class'),
             [
-                $container->getDefinition('swp.repository.image'),
-                $container->getDefinition('swp.repository.file'),
+                new Reference(ArticleMediaAssetProvider::class),
                 $baseDefinition,
+                new Reference('swp.factory.image_rendition'),
+                new Reference('swp_content_bundle.manager.media'),
+                new Reference('monolog.logger.swp_asset_download'),
             ]
         );
         $mediaFactoryDefinition->setPublic(true);

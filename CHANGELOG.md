@@ -6,8 +6,49 @@ This changelog references the relevant changes (bug and security fixes) done in 
 
 To get the diff for a specific change, go to https://github.com/superdesk/web-publisher/commit/XXX where XXX is the change hash
 
+### 2.0.0
+ * BC BREAK/feature [#643] Added support for Symfony 4.2 & Flex & PHP 7.3
+ * improvement [#630] Add option to exclude articles from content list items
+ 
+### 1.6.0
+ * bug [#763] Expose more metadata in article media
+ * bug [#754] Always cast publishedBefore and publishedAfter parameters to object of type DateTime
+ * feature [#758] Get next and previous article from content list (in template)
+ * feature [#740] Related articles
+ * feature [#732] Set image byline/credit metadata field in the HTML output
+ * improvement [#730] Allow to filter articles by data stored in extra
+
 ### 1.5.0
+ * improvement [#727] Turn off loggable extensions on tables
+ * feature [#724] Schedule article adding to manual content lists
+ * fix [#722] Fix data send via webhook
+ * bug [#720] Convert editor3 embedded images format to editor2 format
+ * feature [#715] Allow to change the article's slug based on settings
+ * fix [#714] Fix pageviews counting in case of async requests processing
+ * feature [#713] Add option do define rendition used for article body images
+ * BC BREAK feature [#711] Move content push processing to queue - require consumer process running 
+ * bug [#708] Allow to render AMP HTML version of content with route of type "content"
+ * feature [#706] Added Console Command which processes articles' body
+ * feature [#705] Download media assets whan not found in Publisher database
+ * feature [#699] Allow to blacklist specific article keywords
+ * feature [#696] Allow to use first published date as article publish date
+ * bug [#693] Do not add articles to automatic content lists without filters set
+ * fix [#689] By default add new item to top of automatic content ligst
+ * feature [#674] Added webhook for generating preview URL
+ * feature [#670] Enable password reset
+ * feature [#669] Added command to import users from JSON files
+ * feature [#666] Expose values for social accounts for authors
+ * feature [#665] Added route to redirect to an article page by article slug
+ * feature [#649] Render media in preview when article is not yet published
+ * feature [#658] Option to store article comments count
+ * improvement [#648] Exclude non-publisher created routes from RouteProvider
+ * bug [#647] Do not allow empty params in ContentListsItemLoader
+ * bug [#646] Do not enable tenantable filter in articles count handler
+ * feature [#645] Loader for keyword
  * improvement [#642] Change fbia to isPublishedFbia
+ * bug [#641] Fix the assets URLs generating by Media Manager
+ * bug [#640] Paywall securing articles doesn't work
+ * bug [#639] Error in generating url to avatar image
  * improvement [#630] Add otpion to exclude articles fron content list items
 
 ### 1.4.0

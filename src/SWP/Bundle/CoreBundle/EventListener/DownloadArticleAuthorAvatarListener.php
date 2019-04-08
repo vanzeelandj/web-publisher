@@ -74,10 +74,9 @@ final class DownloadArticleAuthorAvatarListener
 
         $authors = [];
         /** @var ArticleAuthorInterface $packageAuthor */
-        foreach ($package->getAuthors()->toArray() as $packageAuthor) {
+        foreach ($package->getAuthors() as $packageAuthor) {
             $authors[] = $this->handle($packageAuthor);
         }
-
         $package->setAuthors(new ArrayCollection($authors));
     }
 
@@ -97,13 +96,16 @@ final class DownloadArticleAuthorAvatarListener
             }
             $existingAvatar = $this->entityManager->getRepository(Image::class)->findBy(['assetId' => $assetId]);
             if (\count($existingAvatar) > 0) {
-                $object->setAvatarUrl($this->authorMediaManager->getMediaPublicUrl(\reset($existingAvatar)));
+                $object->setAvatarUrl((string) \reset($existingAvatar));
 
                 return $object;
             }
 
             try {
                 $file = \file_get_contents($object->getAvatarUrl());
+                if (false === $file) {
+                    throw new \Exception('File can\'t be downloaded');
+                }
                 $tempDirectory = $this->cacheDirectory.\DIRECTORY_SEPARATOR.'downloaded_avatars';
                 $tempLocation = $tempDirectory.\DIRECTORY_SEPARATOR.\sha1($assetId.date('his'));
                 if (!$filesystem->exists($tempDirectory)) {
@@ -122,7 +124,7 @@ final class DownloadArticleAuthorAvatarListener
             $this->entityManager->flush();
 
             $object->setAvatar($avatar);
-            $object->setAvatarUrl($this->authorMediaManager->getMediaPublicUrl($image));
+            $object->setAvatarUrl((string) $image);
         }
 
         return $object;

@@ -36,8 +36,8 @@ class Configuration implements ConfigurationInterface
      */
     public function getConfigTreeBuilder()
     {
-        $treeBuilder = new TreeBuilder();
-        $treeBuilder->root('swp_analytics')
+        $treeBuilder = new TreeBuilder('swp_analytics');
+        $treeBuilder->getRootNode()
             ->children()
                 ->arrayNode('persistence')
                     ->addDefaultsIfNotSet()
@@ -74,10 +74,6 @@ class Configuration implements ConfigurationInterface
                             ->end()
                         ->end()
                     ->end()
-                ->end()
-                ->arrayNode('metrics_listener')
-                    ->addDefaultsIfNotSet()
-                    ->canBeDisabled()
                 ->end()
             ->end();
 

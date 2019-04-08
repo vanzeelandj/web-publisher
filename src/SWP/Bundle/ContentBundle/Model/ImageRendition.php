@@ -21,6 +21,8 @@ use SWP\Component\Storage\Model\PersistableInterface;
  */
 class ImageRendition implements ImageRenditionInterface, PersistableInterface
 {
+    use PreviewUrlAwareTrait;
+
     /**
      * @var string
      */
@@ -51,111 +53,69 @@ class ImageRendition implements ImageRenditionInterface, PersistableInterface
      */
     protected $media;
 
-    /**
-     * @return ArticleMediaInterface
-     */
     public function getMedia(): ArticleMediaInterface
     {
         return $this->media;
     }
 
-    /**
-     * @param ArticleMediaInterface $media
-     */
-    public function setMedia(ArticleMediaInterface $media)
+    public function setMedia(ArticleMediaInterface $media): void
     {
         $this->media = $media;
     }
 
-    /**
-     * @return ImageInterface
-     */
-    public function getImage()
+    public function getImage(): ImageInterface
     {
         return $this->image;
     }
 
-    /**
-     * @param ImageInterface $image
-     */
-    public function setImage($image)
+    public function setImage(ImageInterface $image): void
     {
         $this->image = $image;
     }
 
     /**
-     * @return int
+     * @return null|int
      */
-    public function getId(): int
+    public function getId(): ?int
     {
         return $this->id;
     }
 
     /**
-     * @param int $id
+     * @param null|int $id
      */
-    public function setId(int $id)
+    public function setId(?int $id)
     {
         $this->id = $id;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getWidth()
+    public function getWidth(): int
     {
         return $this->width;
     }
 
-    /**
-     * @param string $width
-     *
-     * @return ImageRendition
-     */
-    public function setWidth($width)
+    public function setWidth(int $width): void
     {
         $this->width = $width;
-
-        return $this;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getHeight()
+    public function getHeight(): int
     {
         return $this->height;
     }
 
-    /**
-     * @param string $height
-     *
-     * @return ImageRendition
-     */
-    public function setHeight($height)
+    public function setHeight(int $height): void
     {
         $this->height = $height;
-
-        return $this;
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
 
-    /**
-     * @param string $name
-     *
-     * @return ImageRendition
-     */
-    public function setName($name)
+    public function setName(string $name): void
     {
         $this->name = $name;
-
-        return $this;
     }
 }

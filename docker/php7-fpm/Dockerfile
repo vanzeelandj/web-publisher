@@ -1,4 +1,4 @@
-FROM php:7.2-fpm-alpine3.7
+FROM php:7.3-fpm-alpine3.7
 
 RUN apk update
 RUN apk add curl-dev
@@ -21,17 +21,17 @@ RUN set -ex \
         libmemcached-dev \
         autoconf \
         build-base \
-        libzmq \
-        zeromq-dev \
+        rabbitmq-c-dev \
     && docker-php-ext-configure intl \
     && docker-php-ext-install intl \
     && docker-php-ext-configure pgsql -with-pgsql=/usr/local/pgsql \
     && docker-php-ext-install pdo pdo_pgsql pgsql \
     && docker-php-ext-install opcache \
+    && docker-php-ext-install sockets \
     && pecl install memcached \
     && docker-php-ext-enable memcached \
-    && pecl install zmq-beta \
-    && docker-php-ext-enable zmq \
+    && pecl install amqp \
+    && docker-php-ext-enable amqp \
     && pecl install xdebug \
     && docker-php-ext-enable xdebug \
     && docker-php-ext-install exif \
@@ -46,5 +46,11 @@ RUN curl --insecure https://getcomposer.org/composer.phar -o /usr/bin/composer &
 RUN rm /etc/localtime
 RUN ln -s /usr/share/zoneinfo/Europe/Berlin /etc/localtime
 RUN "date"
+
+COPY --from=composer:1.6 /usr/bin/composer /usr/bin/composer
+# https://getcomposer.org/doc/03-cli.md#composer-allow-superuser
+ENV COMPOSER_ALLOW_SUPERUSER 1
+# create composer cache directory
+RUN mkdir -p /var/www/.composer && chown -R www-data /var/www/.composer
 
 WORKDIR /var/www/publisher

@@ -31,14 +31,14 @@ interface ArticleInterface extends BaseArticleInterface, TenantAwareInterface, L
     public function setId($id);
 
     /**
-     * @return PackageInterface
+     * @return PackageInterface|null
      */
     public function getPackage(): ?PackageInterface;
 
     /**
-     * @param PackageInterface $package
+     * @param PackageInterface|null $package
      */
-    public function setPackage(PackageInterface $package);
+    public function setPackage(?PackageInterface $package);
 
     /**
      * @return bool
@@ -69,4 +69,8 @@ interface ArticleInterface extends BaseArticleInterface, TenantAwareInterface, L
      * @param ExternalArticleInterface $externalArticle
      */
     public function setExternalArticle(ExternalArticleInterface $externalArticle): void;
+
+    public function getCommentsCount(): int;
+
+    public function setCommentsCount(int $commentsCount): void;
 }

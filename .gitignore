@@ -1,30 +1,51 @@
 /app/bootstrap.php.cache
-/app/supervisor
-!app/supervisor/.gitkeep
-/app/phpunit.xml
 /app/themes/
 /var/*
 !/var/.gitkeep
 /bin/
+!/bin/console
 !/bin/UpdateApplicationVersion.php
 /docs/_build/
 /docs/_extensions/sensio/sphinx/__pycache__/
 /docs/_extensions/sensio/__pycache__/
 /composer.phar
-/docker/pgsql/config/*
 /docker/.env
-!/docker/pgsql/config/.gitkeep
-/docker/pgsql/data/*
-!/docker/pgsql/data/.gitkeep
-/vendor/
-/web/bundles/
-/web/uploads/*
-!/web/uploads/.gitkeep
+/docker/elasticsearch
+/public/bundles/
+/public/uploads/*
+!/public/uploads/.gitkeep
 logs/
 build/
 RMT
-.env
 .web-server-pid
 nohup.out
 /config/jwt/*.pem*
 !/config/jwt/
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/var/
+/vendor/
+###< symfony/framework-bundle ###
+
+###> behat/symfony2-extension ###
+behat.yml
+###< behat/symfony2-extension ###
+
+###> lexik/jwt-authentication-bundle ###
+/config/jwt/*.pem
+###< lexik/jwt-authentication-bundle ###
+
+###> phpunit/phpunit ###
+/phpunit.xml
+###< phpunit/phpunit ###
+
+###> symfony/phpunit-bridge ###
+.phpunit
+###< symfony/phpunit-bridge ###
+
+###> symfony/web-server-bundle ###
+/.web-server-pid
+###< symfony/web-server-bundle ###

@@ -14,6 +14,9 @@
 
 namespace SWP\Component\TemplatesSystem\Twig\Node;
 
+use Twig\Node\ForLoopNode;
+use Twig\Node\IfNode;
+
 /**
  * Gimme twig node.
  */
@@ -51,10 +54,10 @@ class GimmeListNode extends \Twig_Node
         $lineno,
         $tag = null
     ) {
-        $body = new \Twig_Node([$body, $this->loop = new \Twig_Node_ForLoop($lineno, $tag)]);
+        $body = new \Twig_Node([$body, $this->loop = new ForLoopNode($lineno, $tag)]);
 
         if (null !== $ifExpression) {
-            $body = new \Twig_Node_If(new \Twig_Node([$ifExpression, $body]), null, $lineno, $tag);
+            $body = new IfNode(new \Twig_Node([$ifExpression, $body]), null, $lineno, $tag);
         }
 
         $nodes = [
@@ -150,7 +153,7 @@ class GimmeListNode extends \Twig_Node
                 ->write("  'first'  => true,\n")
                 ->write(");\n");
 
-            if (!$this->getAttribute('ifexpr') && $this->getNode('collectionType')) {
+            if (!$this->getAttribute('ifexpr')) {
                 $compiler
                     ->write('if (is_array(')->subcompile($this->getNode('collectionType'))->raw(') || (is_object(')->subcompile($this->getNode('collectionType'))->raw(') && ')->subcompile($this->getNode('collectionType'))->raw(" instanceof Countable)) {\n")
                     ->indent()

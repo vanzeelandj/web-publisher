@@ -15,10 +15,10 @@
 namespace SWP\Bundle\CoreBundle\Controller;
 
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
 use SWP\Bundle\ContentBundle\Model\SlideshowInterface;
 use SWP\Component\Common\Criteria\Criteria;
+use SWP\Component\Common\Exception\NotFoundHttpException;
 use SWP\Component\Common\Pagination\PaginationData;
 use SWP\Component\Common\Response\ResourcesListResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
@@ -41,8 +41,7 @@ class SlideshowItemController extends Controller
      *         {"name"="sorting", "dataType"="string", "pattern"="[updatedAt]=asc|desc"}
      *     }
      * )
-     * @Route("/api/{version}/content/slideshows/{articleId}/{id}/items/", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_core_slideshow_items", requirements={"id"="\d+"})
-     * @Method("GET")
+     * @Route("/api/{version}/content/slideshows/{articleId}/{id}/items/", options={"expose"=true}, defaults={"version"="v1"}, methods={"GET"}, name="swp_api_core_slideshow_items", requirements={"id"="\d+"})
      */
     public function listAction(Request $request, string $articleId, string $id)
     {

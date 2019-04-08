@@ -17,20 +17,18 @@ declare(strict_types=1);
 namespace SWP\Bundle\ContentBundle\Controller;
 
 use Hoa\Mime\Mime;
+use SWP\Component\Bridge\Events;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
 use SWP\Bundle\ContentBundle\Form\Type\MediaFileType;
 use SWP\Bundle\ContentBundle\Model\ArticleMedia;
 use SWP\Bundle\ContentBundle\Provider\FileProvider;
-use SWP\Component\Bridge\Events;
-use SWP\Component\Bridge\Model\PackageInterface;
 use SWP\Component\Common\Response\ResponseContext;
 use SWP\Component\Common\Response\SingleResourceResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Annotation\Route;
 
 class ContentPushController extends Controller
 {
@@ -44,42 +42,20 @@ class ContentPushController extends Controller
      *         201="Returned on success"
      *     }
      * )
-     * @Route("/api/{version}/content/push", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_content_push")
-     * @Method("POST")
+     * @Route("/api/{version}/content/push", methods={"POST"}, options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_content_push")
      */
     public function pushContentAction(Request $request)
     {
-        $content = $request->getContent();
-        $dispatcher = $this->get('event_dispatcher');
-        $package = $this->get('swp_bridge.transformer.json_to_package')->transform($content);
-        $dispatcher->dispatch(Events::SWP_VALIDATION, new GenericEvent($package));
+        $package = $this->container->get('swp_bridge.transformer.json_to_package')->transform($request->getContent());
+        $this->container->get('event_dispatcher')->dispatch(Events::SWP_VALIDATION, new GenericEvent($package));
 
-        $existingPackage = $this->findExistingPackage($package);
-        if (null !== $existingPackage) {
-            $objectManager = $this->get('swp.object_manager.package');
-            $package->setId($existingPackage->getId());
-            $package->setCreatedAt($existingPackage->getCreatedAt());
-            $package->setUpdatedAt(new \DateTime());
-            $this->get('event_dispatcher')->dispatch(Events::PACKAGE_PRE_UPDATE, new GenericEvent($package, [
-                'eventName' => Events::PACKAGE_PRE_UPDATE,
-                'package' => $existingPackage,
-            ]));
+        $payload = \serialize([
+            'package' => $package,
+            'tenant' => $this->container->get('swp_multi_tenancy.tenant_context')->getTenant(),
+        ]);
+        $this->container->get('old_sound_rabbit_mq.content_push_producer')->publish($payload);
 
-            $package = $objectManager->merge($package);
-            $objectManager->flush();
-
-            $dispatcher->dispatch(Events::PACKAGE_POST_UPDATE, new GenericEvent($package, ['eventName' => Events::PACKAGE_POST_UPDATE]));
-            $dispatcher->dispatch(Events::PACKAGE_PROCESSED, new GenericEvent($package, ['eventName' => Events::PACKAGE_PROCESSED]));
-
-            return new SingleResourceResponse(['status' => 'OK'], new ResponseContext(201));
-        }
-
-        $dispatcher->dispatch(Events::PACKAGE_PRE_CREATE, new GenericEvent($package, ['eventName' => Events::PACKAGE_PRE_CREATE]));
-        $this->getPackageRepository()->add($package);
-        $dispatcher->dispatch(Events::PACKAGE_POST_CREATE, new GenericEvent($package, ['eventName' => Events::PACKAGE_POST_CREATE]));
-        $dispatcher->dispatch(Events::PACKAGE_PROCESSED, new GenericEvent($package, ['eventName' => Events::PACKAGE_PROCESSED]));
-
-        return new SingleResourceResponse(['status' => 'OK', 'package' => ['id' => $package->getId()]], new ResponseContext(201));
+        return new SingleResourceResponse(['status' => 'OK'], new ResponseContext(201));
     }
 
     /**
@@ -95,8 +71,7 @@ class ContentPushController extends Controller
      *     },
      *     input="SWP\Bundle\ContentBundle\Form\Type\MediaFileType"
      * )
-     * @Route("/api/{version}/assets/push", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_assets_push")
-     * @Method("POST")
+     * @Route("/api/{version}/assets/push", methods={"POST"}, options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_assets_push")
      */
     public function pushAssetsAction(Request $request)
     {
@@ -117,13 +92,15 @@ class ContentPushController extends Controller
                     $this->get('swp.object_manager.media')->flush();
                 }
 
-                return new SingleResourceResponse([
-                    'media_id' => $mediaId,
-                    'URL' => $mediaManager->getMediaPublicUrl($file),
-                    'media' => base64_encode($mediaManager->getFile($file)),
-                    'mime_type' => Mime::getMimeFromExtension($file->getFileExtension()),
-                    'filemeta' => [],
-                ], new ResponseContext(201));
+                return new SingleResourceResponse(
+                    [
+                        'media_id' => $mediaId,
+                        'URL' => $mediaManager->getMediaPublicUrl($file),
+                        'media' => base64_encode($mediaManager->getFile($file)),
+                        'mime_type' => Mime::getMimeFromExtension($file->getFileExtension()),
+                        'filemeta' => [],
+                    ], new ResponseContext(201)
+                );
             }
 
             throw new \Exception('Uploaded file is not valid:'.$uploadedFile->getErrorMessage());
@@ -143,16 +120,15 @@ class ContentPushController extends Controller
      *         200="Returned on form errors"
      *     }
      * )
-     * @Route("/api/{version}/assets/push/{mediaId}", options={"expose"=true}, defaults={"version"="v1"}, requirements={"mediaId"=".+"}, name="swp_api_assets_get")
-     * @Route("/api/{version}/assets/get/{mediaId}", options={"expose"=true}, defaults={"version"="v1"}, requirements={"mediaId"=".+"}, name="swp_api_assets_get_1")
-     * @Method("GET")
+     * @Route("/api/{version}/assets/push/{mediaId}.{extension}", methods={"GET"}, options={"expose"=true}, defaults={"version"="v1"}, requirements={"mediaId"=".+"}, name="swp_api_assets_get")
+     * @Route("/api/{version}/assets/get/{mediaId}.{extension}", methods={"GET"}, options={"expose"=true}, defaults={"version"="v1"}, requirements={"mediaId"=".+"}, name="swp_api_assets_get_1")
      */
-    public function getAssetsAction($mediaId)
+    public function getAssetsAction(string $mediaId, string $extension)
     {
-        $image = $this->get('swp.repository.image')
-            ->findImageByAssetId(ArticleMedia::handleMediaId($mediaId));
+        $fileProvider = $this->container->get(FileProvider::class);
+        $file = $fileProvider->getFile(ArticleMedia::handleMediaId($mediaId), $extension);
 
-        if (null === $image) {
+        if (null === $file) {
             throw new NotFoundHttpException('Media don\'t exist in storage');
         }
 
@@ -160,9 +136,9 @@ class ContentPushController extends Controller
 
         return new SingleResourceResponse([
             'media_id' => $mediaId,
-            'URL' => $mediaManager->getMediaPublicUrl($image),
-            'media' => base64_encode($mediaManager->getFile($image)),
-            'mime_type' => Mime::getMimeFromExtension($image->getFileExtension()),
+            'URL' => $mediaManager->getMediaPublicUrl($file),
+            'media' => base64_encode($mediaManager->getFile($file)),
+            'mime_type' => Mime::getMimeFromExtension($file->getFileExtension()),
             'filemeta' => [],
         ]);
     }
@@ -171,7 +147,7 @@ class ContentPushController extends Controller
     {
         $existingPackage = $this->getPackageRepository()->findOneBy(['guid' => $package->getGuid()]);
 
-        if (null === $existingPackage) {
+        if (null === $existingPackage && null !== $package->getEvolvedFrom()) {
             $existingPackage = $this->getPackageRepository()->findOneBy([
                 'guid' => $package->getEvolvedFrom(),
             ]);

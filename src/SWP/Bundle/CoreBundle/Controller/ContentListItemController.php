@@ -15,8 +15,9 @@
 namespace SWP\Bundle\CoreBundle\Controller;
 
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
+use Symfony\Component\Routing\Annotation\Route;
+use SWP\Bundle\ContentBundle\ArticleEvents;
+use SWP\Bundle\ContentBundle\Event\ArticleEvent;
 use SWP\Bundle\ContentListBundle\Form\Type\ContentListItemsType;
 use SWP\Bundle\CoreBundle\Form\Type\ContentListItemType;
 use SWP\Bundle\CoreBundle\Model\ContentListInterface;
@@ -49,8 +50,7 @@ class ContentListItemController extends Controller
      *         {"name"="sorting", "dataType"="string", "pattern"="[updatedAt]=asc|desc"}
      *     }
      * )
-     * @Route("/api/{version}/content/lists/{id}/items/", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_core_list_items", requirements={"id"="\d+"})
-     * @Method("GET")
+     * @Route("/api/{version}/content/lists/{id}/items/", options={"expose"=true}, defaults={"version"="v1"}, methods={"GET"}, name="swp_api_core_list_items", requirements={"id"="\d+"})
      */
     public function listAction(Request $request, $id)
     {
@@ -76,8 +76,7 @@ class ContentListItemController extends Controller
      *         200="Returned on success."
      *     }
      * )
-     * @Route("/api/{version}/content/lists/{listId}/items/{id}", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_core_show_lists_item", requirements={"id"="\d+"})
-     * @Method("GET")
+     * @Route("/api/{version}/content/lists/{listId}/items/{id}", options={"expose"=true}, defaults={"version"="v1"}, methods={"GET"}, name="swp_api_core_show_lists_item", requirements={"id"="\d+"})
      */
     public function getAction($listId, $id)
     {
@@ -95,8 +94,7 @@ class ContentListItemController extends Controller
      *     },
      *     input="SWP\Bundle\CoreBundle\Form\Type\ContentListItemType"
      * )
-     * @Route("/api/{version}/content/lists/{listId}/items/{id}", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_core_update_lists_item", requirements={"id"="\d+", "listId"="\d+"})
-     * @Method("PATCH")
+     * @Route("/api/{version}/content/lists/{listId}/items/{id}", options={"expose"=true}, defaults={"version"="v1"}, methods={"PATCH"}, name="swp_api_core_update_lists_item", requirements={"id"="\d+", "listId"="\d+"})
      */
     public function updateAction(Request $request, $listId, $id)
     {
@@ -137,8 +135,7 @@ class ContentListItemController extends Controller
      *     },
      *     input="SWP\Bundle\ContentListBundle\Form\Type\ContentListItemsType"
      * )
-     * @Route("/api/{version}/content/lists/{listId}/items/", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_core_batch_update_lists_item", requirements={"listId"="\d+"})
-     * @Method("PATCH")
+     * @Route("/api/{version}/content/lists/{listId}/items/", options={"expose"=true}, defaults={"version"="v1"}, methods={"PATCH"}, name="swp_api_core_batch_update_lists_item", requirements={"listId"="\d+"})
      */
     public function batchUpdateAction(Request $request, $listId)
     {
@@ -165,6 +162,7 @@ class ContentListItemController extends Controller
                 throw new ConflictHttpException('List was already updated');
             }
 
+            $updatedArticles = [];
             foreach ($data['items'] as $item) {
                 if (!is_array($item)) {
                     continue;
@@ -180,6 +178,7 @@ class ContentListItemController extends Controller
                         $contentListItem->setPosition($item['position']);
                         $list->setUpdatedAt(new \DateTime('now'));
                         $objectManager->flush();
+                        $updatedArticles[$item['content_id']] = $contentListItem->getContent();
 
                         break;
                     case 'add':
@@ -189,6 +188,7 @@ class ContentListItemController extends Controller
                         $objectManager->persist($contentListItem);
                         $list->setUpdatedAt(new \DateTime('now'));
                         $objectManager->flush();
+                        $updatedArticles[$item['content_id']] = $contentListItem->getContent();
 
                         break;
                     case 'delete':
@@ -196,13 +196,24 @@ class ContentListItemController extends Controller
                         $objectManager->remove($contentListItem);
                         $list->setUpdatedAt(new \DateTime('now'));
                         $objectManager->flush();
+                        $updatedArticles[$item['content_id']] = $contentListItem->getContent();
 
                         break;
                 }
             }
 
+            foreach ($updatedArticles as $updatedArticle) {
+                $this->get('event_dispatcher')->dispatch(ArticleEvents::POST_UPDATE, new ArticleEvent(
+                    $updatedArticle,
+                    $updatedArticle->getPackage(),
+                    ArticleEvents::POST_UPDATE
+                ));
+            }
+
             return new SingleResourceResponse($list, new ResponseContext(201));
         }
+
+        return new SingleResourceResponse($form, new ResponseContext(400));
     }
 
     private function findByContentOr404($listId, $contentId): ContentListItemInterface

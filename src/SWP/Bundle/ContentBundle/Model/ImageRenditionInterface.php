@@ -17,20 +17,23 @@ namespace SWP\Bundle\ContentBundle\Model;
 /**
  * Interface ImageRenditionInterface.
  */
-interface ImageRenditionInterface
+interface ImageRenditionInterface extends PreviewUrlAwareInterface
 {
-    /**
-     * @return int
-     */
-    public function getWidth();
+    public function getWidth(): int;
 
-    /**
-     * @return int
-     */
-    public function getHeight();
+    public function getHeight(): int;
 
-    /**
-     * @return string
-     */
-    public function getName();
+    public function getName(): string;
+
+    public function setImage(ImageInterface $image): void;
+
+    public function getImage(): ImageInterface;
+
+    public function setMedia(ArticleMediaInterface $media): void;
+
+    public function setHeight(int $height): void;
+
+    public function setWidth(int $width): void;
+
+    public function setName(string $name): void;
 }

@@ -17,10 +17,12 @@ declare(strict_types=1);
 namespace SWP\Bundle\CoreBundle\Consumer;
 
 use GuzzleHttp\Client;
+use JMS\Serializer\Exception\RuntimeException;
 use JMS\Serializer\SerializerInterface;
 use OldSound\RabbitMqBundle\RabbitMq\ConsumerInterface;
 use PhpAmqpLib\Message\AMQPMessage;
 use GuzzleHttp;
+use Psr\Log\LoggerInterface;
 
 class SendWebhookConsumer implements ConsumerInterface
 {
@@ -30,44 +32,56 @@ class SendWebhookConsumer implements ConsumerInterface
     protected $serializer;
 
     /**
-     * SendWebhookConsumer constructor.
-     *
-     * @param SerializerInterface $serializer
+     * @var LoggerInterface
      */
-    public function __construct(SerializerInterface $serializer)
+    protected $logger;
+
+    public function __construct(SerializerInterface $serializer, LoggerInterface $logger)
     {
         $this->serializer = $serializer;
+        $this->logger = $logger;
     }
 
-    /**
-     * @param AMQPMessage $message
-     *
-     * @return bool|mixed
-     */
-    public function execute(AMQPMessage $message)
+    public function execute(AMQPMessage $message): int
     {
-        $decodedMessage = $this->serializer->deserialize($message->body, 'array', 'json');
-        if (!array_key_exists('url', $decodedMessage) || !array_key_exists('subject', $decodedMessage)) {
-            return;
+        try {
+            $decodedMessage = $this->serializer->deserialize($message->body, 'array', 'json');
+        } catch (RuntimeException $e) {
+            $this->logger->error('Message REJECTED: '.$e->getMessage(), ['exception' => $e->getTraceAsString()]);
+
+            return ConsumerInterface::MSG_REJECT;
+        }
+
+        if (!\array_key_exists('url', $decodedMessage) || !array_key_exists('subject', $decodedMessage)) {
+            return ConsumerInterface::MSG_REJECT;
+        }
+
+        $headers = ['content-type' => 'application/json'];
+        if (\array_key_exists('metadata', $decodedMessage)) {
+            foreach ($decodedMessage['metadata'] as $header => $value) {
+                $headers['X-WEBHOOK-'.\strtoupper($header)] = $value;
+            }
         }
 
         $webhookRequest = new GuzzleHttp\Psr7\Request(
             'POST',
             $decodedMessage['url'],
-            [],
+            $headers,
             $this->serializer->serialize($decodedMessage['subject'], 'json')
         );
 
         try {
             $this->getClient()->send($webhookRequest);
-        } catch (GuzzleHttp\Exception\ClientException | GuzzleHttp\Exception\ServerException $e) {
-            return;
+            $this->logger->info(sprintf('Message SEND to url %s', $decodedMessage['url']), $headers);
+        } catch (GuzzleHttp\Exception\ClientException | GuzzleHttp\Exception\ServerException | GuzzleHttp\Exception\ConnectException $e) {
+            $this->logger->error('Message REJECTED: '.$e->getMessage(), ['exception' => $e->getTraceAsString()]);
+
+            return ConsumerInterface::MSG_REJECT;
         }
+
+        return ConsumerInterface::MSG_ACK;
     }
 
-    /**
-     * @return Client
-     */
     protected function getClient(): Client
     {
         return new Client();

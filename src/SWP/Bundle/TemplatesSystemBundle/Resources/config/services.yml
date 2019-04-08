@@ -8,6 +8,7 @@ services:
     swp_template_engine_context:
         class: SWP\Component\TemplatesSystem\Gimme\Context\Context
         arguments:
+            - "@event_dispatcher"
             - "@doctrine_cache.providers.main_cache"
             - "%kernel.project_dir%/app/Resources/meta"
     context:
@@ -73,6 +74,14 @@ services:
             - "@swp_template_engine_context"
         tags:
             - { name: data_collector, template: "SWPTemplatesSystemBundle:Collector:contextCollector", id: "context_collector" }
+
+
+    swp_template_engine.data_collector.meta_loader_collector:
+        class: SWP\Bundle\TemplatesSystemBundle\DataCollector\MetaLoaderCollector
+        arguments:
+            - "@swp_template_engine_loader_chain"
+        tags:
+            - { name: data_collector, template: "SWPTemplatesSystemBundle:Collector:loadersCollector", id: "meta_loader_collector" }
 
     swp.provider.container:
         class: SWP\Bundle\TemplatesSystemBundle\Provider\ContainerProvider

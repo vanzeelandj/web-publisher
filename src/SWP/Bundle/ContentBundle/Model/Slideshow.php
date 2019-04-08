@@ -16,11 +16,14 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\ContentBundle\Model;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
+use SWP\Component\Common\Model\SoftDeletableTrait;
 use SWP\Component\Common\Model\TimestampableTrait;
 
 class Slideshow implements SlideshowInterface
 {
-    use TimestampableTrait;
+    use TimestampableTrait, SoftDeletableTrait;
 
     /**
      * @var string|null
@@ -37,9 +40,14 @@ class Slideshow implements SlideshowInterface
      */
     protected $article;
 
+    /**
+     * @var Collection
+     */
+    protected $items;
+
     public function __construct()
     {
-        $this->createdAt = new \DateTime();
+        $this->items = new ArrayCollection();
     }
 
     public function getId()
@@ -65,5 +73,28 @@ class Slideshow implements SlideshowInterface
     public function setArticle(?ArticleInterface $article): void
     {
         $this->article = $article;
+    }
+
+    public function getItems(): Collection
+    {
+        return $this->items;
+    }
+
+    public function setItems(Collection $items): void
+    {
+        $this->items = $items;
+    }
+
+    public function addItem(SlideshowItemInterface $item): void
+    {
+        if (!$this->hasItem($item)) {
+            $item->setSlideshow($this);
+            $this->items->add($item);
+        }
+    }
+
+    public function hasItem(SlideshowItemInterface $item): bool
+    {
+        return $this->items->contains($item);
     }
 }

@@ -155,13 +155,9 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
         throw new \Exception('Not implemented');
     }
 
-    /**
-     * @param QueryBuilder $queryBuilder
-     * @param Criteria     $criteria
-     */
     private function applyCustomFiltering(QueryBuilder $queryBuilder, Criteria $criteria)
     {
-        foreach (['metadata'] as $name) {
+        foreach (['metadata', 'extra', 'exclude_metadata', 'exclude_extra'] as $name) {
             if (!$criteria->has($name)) {
                 continue;
             }
@@ -173,9 +169,28 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
             }
 
             $orX = $queryBuilder->expr()->orX();
-            foreach ($criteria->get($name) as $value) {
-                $valueExpression = $queryBuilder->expr()->literal('%'.$value.'%');
-                $orX->add($queryBuilder->expr()->like('a.metadata', $valueExpression));
+            foreach ($criteria->get($name) as $key => $value) {
+                $search = ('***' !== $value) ? [$key => $value] : $key;
+                if ('metadata' === $name || 'exclude_metadata' === $name) {
+                    $valueExpression = \str_replace('{', '',
+                        \str_replace('}', '',
+                            '%'.\json_encode($search).'%'
+                        )
+                    );
+                } else {
+                    $valueExpression = '%'.\str_replace('a:1:{', '',
+                        \str_replace(';}', ';',
+                            \serialize($search).'%'
+                        )
+                    );
+                }
+
+                $valueExpression = $queryBuilder->expr()->literal($valueExpression);
+                if (false === strpos($name, 'exclude_')) {
+                    $orX->add($queryBuilder->expr()->like('a.'.$name, $valueExpression));
+                } else {
+                    $orX->add($queryBuilder->expr()->notLike('a.'.\str_replace('exclude_', '', $name), $valueExpression));
+                }
             }
 
             $queryBuilder->andWhere($orX);
@@ -195,15 +210,17 @@ class ArticleRepository extends EntityRepository implements ArticleRepositoryInt
             $criteria->remove('keywords');
         }
 
-        if ($criteria->has('publishedBefore') && $criteria->get('publishedBefore') instanceof \DateTime) {
+        if ($criteria->has('publishedBefore') && null !== $criteria->get('publishedBefore')) {
+            $publishedBefore = $criteria->get('publishedBefore');
             $queryBuilder->andWhere('a.publishedAt < :before')
-                ->setParameter('before', $criteria->get('publishedBefore'));
+                ->setParameter('before', $publishedBefore instanceof \DateTimeInterface ? $publishedBefore : new \DateTime($publishedBefore));
             $criteria->remove('publishedBefore');
         }
 
-        if ($criteria->has('publishedAfter') && $criteria->get('publishedAfter') instanceof \DateTime) {
+        if ($criteria->has('publishedAfter') && null !== $criteria->get('publishedAfter')) {
+            $publishedAfter = $criteria->get('publishedAfter');
             $queryBuilder->andWhere('a.publishedAt > :after')
-                ->setParameter('after', $criteria->get('publishedAfter'));
+                ->setParameter('after', $publishedAfter instanceof \DateTimeInterface ? $publishedAfter : new \DateTime($publishedAfter));
             $criteria->remove('publishedAfter');
         }
 

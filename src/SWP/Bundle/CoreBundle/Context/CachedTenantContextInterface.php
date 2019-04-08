@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /*
  * This file is part of the Superdesk Web Publisher Core Bundle.
  *
@@ -14,15 +16,8 @@
 
 namespace SWP\Bundle\CoreBundle\Context;
 
-/**
- * Interface CachedTenantContextInterface.
- */
-interface CachedTenantContextInterface
+use Symfony\Component\Cache\ResettableInterface;
+
+interface CachedTenantContextInterface extends ResettableInterface
 {
-    /**
-     * @param string $host
-     *
-     * @return mixed
-     */
-    public static function getCacheKey($host);
 }

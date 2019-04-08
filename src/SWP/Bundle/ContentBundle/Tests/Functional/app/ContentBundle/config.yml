@@ -37,7 +37,13 @@ framework:
         logging: false
 
 monolog:
+    channels:
+        - swp_asset_download
     handlers:
+        swp_asset_download:
+            type:   stream
+            level:    debug
+            path:     '%kernel.logs_dir%/swp_asset_download_%kernel.environment%.log'
         main:
             type:   stream
             path:   "%kernel.logs_dir%/%kernel.environment%.log"
@@ -84,9 +90,12 @@ sensio_framework_extra:
 stof_doctrine_extensions:
     orm:
         default:
+            softdeleteable: true
             sortable: true
             tree: true
             timestampable: true
+    class:
+        timestampable:  SWP\Bundle\ContentBundle\EventListener\TimestampableListener
 
 doctrine:
     orm:

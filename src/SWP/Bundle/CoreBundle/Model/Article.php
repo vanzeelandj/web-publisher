@@ -17,6 +17,7 @@ declare(strict_types=1);
 namespace SWP\Bundle\CoreBundle\Model;
 
 use SWP\Bundle\AnalyticsBundle\Model\ArticleEventsTrait;
+use SWP\Bundle\AnalyticsBundle\Model\ContentListsAwareTrait;
 use SWP\Bundle\ContentBundle\Model\Article as BaseArticle;
 use SWP\Component\MultiTenancy\Model\OrganizationAwareTrait;
 use SWP\Component\MultiTenancy\Model\TenantAwareTrait;
@@ -24,7 +25,7 @@ use SWP\Component\Paywall\Model\PaywallSecuredTrait;
 
 class Article extends BaseArticle implements ArticleInterface
 {
-    use TenantAwareTrait, OrganizationAwareTrait, PaywallSecuredTrait, ArticleEventsTrait;
+    use TenantAwareTrait, OrganizationAwareTrait, PaywallSecuredTrait, ArticleEventsTrait, ContentListsAwareTrait;
 
     /**
      * @var PackageInterface
@@ -47,6 +48,11 @@ class Article extends BaseArticle implements ArticleInterface
     protected $externalArticle;
 
     /**
+     * @var int
+     */
+    protected $commentsCount = 0;
+
+    /**
      * {@inheritdoc}
      */
     public function setId($id)
@@ -65,7 +71,7 @@ class Article extends BaseArticle implements ArticleInterface
     /**
      * {@inheritdoc}
      */
-    public function setPackage(PackageInterface $package)
+    public function setPackage(?PackageInterface $package)
     {
         $this->package = $package;
     }
@@ -131,5 +137,19 @@ class Article extends BaseArticle implements ArticleInterface
         }
 
         return $data;
+    }
+
+    public function getCommentsCount(): int
+    {
+        if (null === $this->commentsCount) {
+            return 0;
+        }
+
+        return $this->commentsCount;
+    }
+
+    public function setCommentsCount(int $commentsCount): void
+    {
+        $this->commentsCount = $commentsCount;
     }
 }

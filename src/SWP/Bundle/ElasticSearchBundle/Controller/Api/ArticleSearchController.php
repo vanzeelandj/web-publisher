@@ -17,13 +17,12 @@ declare(strict_types=1);
 namespace SWP\Bundle\ElasticSearchBundle\Controller\Api;
 
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Method;
-use Sensio\Bundle\FrameworkExtraBundle\Configuration\Route;
 use SWP\Bundle\ElasticSearchBundle\Criteria\Criteria;
 use SWP\Bundle\ElasticSearchBundle\Repository\ArticleRepository;
 use SWP\Component\Common\Response\ResourcesListResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Routing\Annotation\Route;
 
 class ArticleSearchController extends Controller
 {
@@ -49,8 +48,7 @@ class ArticleSearchController extends Controller
      *         {"name"="metadata", "dataType"="array", "description"="Metadata (e.g. query param: ?metadata[located][]=Sydney&metadata[located][]=Berlin)"}
      *     }
      * )
-     * @Route("/api/{version}/content/articles/", options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_content_list_articles")
-     * @Method("GET")
+     * @Route("/api/{version}/content/articles/", methods={"GET"}, options={"expose"=true}, defaults={"version"="v1"}, name="swp_api_content_list_articles")
      */
     public function searchAction(Request $request)
     {
@@ -74,10 +72,12 @@ class ArticleSearchController extends Controller
             ]
         );
 
+        $extraFields = $this->get('service_container')->getParameter('env(ELASTICA_ARTICLE_EXTRA_FIELDS)');
+
         $repositoryManager = $this->get('fos_elastica.manager');
         /** @var ArticleRepository $repository */
         $repository = $repositoryManager->getRepository($this->getParameter('swp.model.article.class'));
-        $articles = $repository->findByCriteria($criteria);
+        $articles = $repository->findByCriteria($criteria, json_decode($extraFields, true));
         $paginator = $this->get('knp_paginator');
         $pagination = $paginator->paginate(
             $articles,

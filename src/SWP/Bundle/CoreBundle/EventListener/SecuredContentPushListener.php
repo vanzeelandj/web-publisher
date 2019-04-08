@@ -54,9 +54,7 @@ class SecuredContentPushListener
         $routeName = $request->attributes->get('_route');
         if (
             'swp_api_content_push' !== $routeName &&
-            'swp_api_assets_push' !== $routeName &&
-            'swp_api_core_add_extra_data' !== $routeName &&
-            'swp_api_core_get_extra_data' !== $routeName
+            'swp_api_core_add_extra_data' !== $routeName
         ) {
             return;
         }
@@ -82,7 +80,8 @@ class SecuredContentPushListener
             return;
         }
 
-        $token = hash_hmac('sha1', $request->getContent(), $organizationToken);
+        $content = $request->getContent();
+        $token = hash_hmac('sha1', $content, $organizationToken);
         if ($signature !== 'sha1='.$token) {
             $event->setResponse(new Response('Bad credentials', 401));
             $event->stopPropagation();

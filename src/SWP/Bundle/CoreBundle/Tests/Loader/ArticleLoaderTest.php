@@ -159,6 +159,21 @@ class ArticleLoaderTest extends WebTestCase
         self::assertEquals(' test-article (id: 3)  features (id: 4)  features-client1 (id: 5) ', $result);
     }
 
+    public function testOrderingByCommentsCount()
+    {
+        $template = '{% gimmelist article from articles|order("commentsCount", "desc")|order("publishedAt", "desc") %} {{ article.title }} {% endgimmelist %}';
+        $result = $this->getRendered($template);
+        self::assertEquals(' Test news sports article  Test news article  Features client1  Features  Test article ', $result);
+
+        $template = '{% gimmelist article from articles|order("pageViews", "asc")|order("commentsCount", "asc") %} {{ article.title }}: {{ article.articleStatistics.pageViewsNumber }}-{{ article.commentsCount }} {% endgimmelist %}';
+        $result = $this->getRendered($template);
+        self::assertEquals(' Features client1: 0-10  Features: 5-5  Test article: 10-0  Test news article: 20-20  Test news sports article: 30-34 ', $result);
+
+        $template = '{% gimmelist article from articles|order("commentsCount", "asc")|order("pageViews", "asc") %} {{ article.title }}: {{ article.articleStatistics.pageViewsNumber }}-{{ article.commentsCount }} {% endgimmelist %}';
+        $result = $this->getRendered($template);
+        self::assertEquals(' Test article: 10-0  Features: 5-5  Features client1: 0-10  Test news article: 20-20  Test news sports article: 30-34 ', $result);
+    }
+
     private function getRendered($template, $context = [])
     {
         $template = $this->twig->createTemplate($template);

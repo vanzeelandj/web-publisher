@@ -22,10 +22,11 @@ use SWP\Bundle\AnalyticsBundle\Model\ArticleEventInterface;
 use SWP\Bundle\AnalyticsBundle\Services\ArticleStatisticsServiceInterface;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
 use SWP\Bundle\CoreBundle\Model\ArticleInterface;
+use SWP\Bundle\CoreBundle\Resolver\ArticleResolverInterface;
 use SWP\Component\MultiTenancy\Context\TenantContextInterface;
+use SWP\Component\MultiTenancy\Exception\TenantNotFoundException;
 use SWP\Component\MultiTenancy\Resolver\TenantResolver;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use Symfony\Component\Routing\Matcher\UrlMatcherInterface;
 
 /**
@@ -54,22 +55,22 @@ final class AnalyticsEventConsumer implements ConsumerInterface
     private $matcher;
 
     /**
-     * AnalyticsEventConsumer constructor.
-     *
-     * @param ArticleStatisticsServiceInterface $articleStatisticsService
-     * @param TenantResolver                    $tenantResolver
-     * @param TenantContextInterface            $tenantContext
+     * @var ArticleResolverInterface
      */
+    private $articleResolver;
+
     public function __construct(
         ArticleStatisticsServiceInterface $articleStatisticsService,
         TenantResolver $tenantResolver,
         TenantContextInterface $tenantContext,
-        UrlMatcherInterface $matcher
+        UrlMatcherInterface $matcher,
+        ArticleResolverInterface $articleResolver
     ) {
         $this->articleStatisticsService = $articleStatisticsService;
         $this->tenantResolver = $tenantResolver;
         $this->tenantContext = $tenantContext;
         $this->matcher = $matcher;
+        $this->articleResolver = $articleResolver;
     }
 
     /**
@@ -85,7 +86,14 @@ final class AnalyticsEventConsumer implements ConsumerInterface
             return ConsumerInterface::MSG_REJECT;
         }
 
-        $this->setTenant($request);
+        try {
+            $this->setTenant($request);
+        } catch (TenantNotFoundException $e) {
+            echo $e->getMessage()."\n";
+
+            return ConsumerInterface::MSG_REJECT;
+        }
+        echo 'Set tenant: '.$this->tenantContext->getTenant()->getCode()."\n";
 
         if ($request->query->has('articleId')) {
             $this->handleArticlePageViews($request);
@@ -111,24 +119,32 @@ final class AnalyticsEventConsumer implements ConsumerInterface
 
         foreach ($request->attributes->get('data') as $url) {
             try {
-                $route = $this->matcher->match($this->getFragmentFromUrl($url, 'path'));
-                if (isset($route['_article_meta']) && $route['_article_meta']->getValues() instanceof ArticleInterface) {
-                    $articleId = $route['_article_meta']->getValues()->getId();
-                    if (!\array_key_exists($articleId, $articles)) {
-                        $articles[$articleId] = $route['_article_meta']->getValues();
-                    }
+                $article = $this->articleResolver->resolve($url);
+            } catch (\Exception $e) {
+                $article = null;
+            }
+
+            if (null !== $article) {
+                $articleId = $article->getId();
+                if (!\array_key_exists($articleId, $articles)) {
+                    $articles[$articleId] = $article;
                 }
-            } catch (ResourceNotFoundException $e) {
-                //ignore
             }
         }
 
         foreach ($articles as $article) {
+            try {
+                $impressionSource = $this->getImpressionSource($request);
+            } catch (\Exception $e) {
+                continue;
+            }
+
             $this->articleStatisticsService->addArticleEvent(
                 (int) $article->getId(),
                 ArticleEventInterface::ACTION_IMPRESSION,
-                $this->getImpressionSource($request)
+                $impressionSource
             );
+            echo 'Article '.$article->getId()." impression was added \n";
         }
     }
 
@@ -203,6 +219,14 @@ final class AnalyticsEventConsumer implements ConsumerInterface
      */
     private function setTenant(Request $request): void
     {
-        $this->tenantContext->setTenant($this->tenantResolver->resolve($request->getHost()));
+        $this->tenantContext->setTenant(
+            $this->tenantResolver->resolve(
+                $request->server->get('HTTP_REFERER',
+                    $request->query->get('host',
+                        $request->getHost()
+                    )
+                )
+            )
+        );
     }
 }

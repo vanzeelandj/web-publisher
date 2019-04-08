@@ -21,7 +21,7 @@ class FeatureContext extends RawMinkContext implements Context, SnippetAccepting
      */
     public function iRunCommand($command)
     {
-        exec(sprintf('php app/console %s --env=test 2>&1', $command), $this->output, $returnVar);
+        exec(sprintf('php bin/console %s --env=test 2>&1', $command), $this->output, $returnVar);
 
         if (0 !== $returnVar) {
             $this->exception = implode("\n", $this->output);
@@ -36,7 +36,7 @@ class FeatureContext extends RawMinkContext implements Context, SnippetAccepting
     public function iRunCommandForXSeconds($command, $number)
     {
         try {
-            $this->output = self::exec_timeout(sprintf('php app/console %s --env=test 2>&1', $command), $number);
+            $this->output = self::exec_timeout(sprintf('php bin/console %s --env=test 2>&1', $command), $number);
             $this->output = implode("\n", $this->output);
         } catch (\Exception $e) {
             $this->exception = $e->getMessage();
@@ -72,6 +72,14 @@ class FeatureContext extends RawMinkContext implements Context, SnippetAccepting
         $client = $this->getMink()->getSession()->getDriver()->getClient();
         $client->followRedirects(true);
         $client->followRedirect();
+    }
+
+    /**
+     * @Then (I )wait :count second(s)
+     */
+    public function iWaitSeconds($count)
+    {
+        usleep($count * 1000000);
     }
 
     /**
