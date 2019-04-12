@@ -14,10 +14,12 @@
 
 namespace SWP\Bundle\CoreBundle\Controller;
 
+use function array_key_exists;
+use DateTime;
 use FOS\RestBundle\Controller\FOSRestController;
 use Nelmio\ApiDocBundle\Annotation\ApiDoc;
+use SWP\Bundle\CoreBundle\Context\ScopeContextInterface;
 use Symfony\Component\Routing\Annotation\Route;
-use SWP\Bundle\CoreBundle\Model\RevisionInterface;
 use SWP\Bundle\MultiTenancyBundle\MultiTenancyEvents;
 use SWP\Component\Common\Response\ResourcesListResponse;
 use SWP\Component\Common\Response\ResponseContext;
@@ -26,7 +28,6 @@ use SWP\Component\Common\Criteria\Criteria;
 use SWP\Component\Common\Pagination\PaginationData;
 use SWP\Bundle\CoreBundle\Form\Type\TenantType;
 use SWP\Component\MultiTenancy\Model\TenantInterface;
-use SWP\Component\Revision\Manager\RevisionManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -147,13 +148,6 @@ class TenantController extends FOSRestController
             }
             $this->getTenantRepository()->add($tenant);
 
-            /** @var RevisionManagerInterface $revisionManager */
-            $revisionManager = $this->get('swp.manager.revision');
-            /** @var RevisionInterface $revision */
-            $revision = $revisionManager->create();
-            $revision->setTenantCode($tenant->getCode());
-            $revisionManager->publish($revision);
-
             return new SingleResourceResponse($tenant, new ResponseContext(201));
         }
 
@@ -187,11 +181,21 @@ class TenantController extends FOSRestController
         $form = $this->createForm(TenantType::class, $tenant, ['method' => $request->getMethod()]);
         $form->handleRequest($request);
         if ($form->isValid()) {
-            $tenant->setUpdatedAt(new \DateTime('now'));
+            $formData = $request->request->get($form->getName());
+
+            $tenant->setUpdatedAt(new DateTime('now'));
             $this->get('swp.object_manager.tenant')->flush();
 
             $tenantContext = $this->get('swp_multi_tenancy.tenant_context');
             $tenantContext->setTenant($tenant);
+
+            $settingsManager = $this->get('swp_settings.manager.settings');
+            if (array_key_exists('fbiaEnabled', $formData)) {
+                $settingsManager->set('fbia_enabled', $formData['fbiaEnabled'], ScopeContextInterface::SCOPE_TENANT, $tenant);
+            }
+            if (array_key_exists('paywallEnabled', $formData)) {
+                $settingsManager->set('paywall_enabled', $formData['paywallEnabled'], ScopeContextInterface::SCOPE_TENANT, $tenant);
+            }
 
             return new SingleResourceResponse($tenant);
         }
@@ -204,7 +208,7 @@ class TenantController extends FOSRestController
      *
      * @throws NotFoundHttpException
      *
-     * @return mixed|null|TenantInterface
+     * @return mixed|TenantInterface|null
      */
     private function findOr404($code)
     {
@@ -219,7 +223,7 @@ class TenantController extends FOSRestController
      * @param string      $domain
      * @param string|null $subdomain
      *
-     * @return mixed|null|TenantInterface
+     * @return mixed|TenantInterface|null
      */
     private function ensureTenantDontExists(string $domain, string $subdomain = null)
     {
