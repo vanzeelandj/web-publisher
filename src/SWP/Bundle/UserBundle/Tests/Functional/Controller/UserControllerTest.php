@@ -31,14 +31,12 @@ class UserControllerTest extends WebTestCase
     {
         $client = static::createClient();
         $client->request('POST', $this->router->generate('swp_api_core_register_user'), [
-            'user_registration' => [
                 'email' => 'contact@example.com',
                 'username' => 'sofab.contact',
                 'plainPassword' => [
                     'first' => 'testPass',
                     'second' => 'testPass',
                 ],
-            ],
         ]);
         self::assertEquals(302, $client->getResponse()->getStatusCode());
 
@@ -49,9 +47,7 @@ class UserControllerTest extends WebTestCase
         self::assertEquals('ROLE_USER', $content['roles'][0]);
 
         $client->request('PATCH', $this->router->generate('swp_api_user_promote_user', ['id' => 1]), [
-            'swp_api_user_promote_user' => [
-                'roles' => 'ROLE_ADMIN,ROLE_EDITOR',
-            ],
+            'roles' => 'ROLE_ADMIN,ROLE_EDITOR',
         ]);
         $content = json_decode($client->getResponse()->getContent(), true);
         self::assertCount(3, $content['roles']);
@@ -60,9 +56,7 @@ class UserControllerTest extends WebTestCase
         self::assertEquals('ROLE_USER', $content['roles'][2]);
 
         $client->request('PATCH', $this->router->generate('swp_api_user_demote_user', ['id' => 1]), [
-            'swp_api_user_promote_user' => [
-                'roles' => 'ROLE_ADMIN',
-            ],
+            'roles' => 'ROLE_ADMIN',
         ]);
         $content = json_decode($client->getResponse()->getContent(), true);
         self::assertCount(2, $content['roles']);
@@ -70,9 +64,7 @@ class UserControllerTest extends WebTestCase
         self::assertEquals('ROLE_USER', $content['roles'][1]);
 
         $client->request('PATCH', $this->router->generate('swp_api_user_promote_user', ['id' => 1]), [
-            'swp_api_user_promote_user' => [
-                'roles' => 'ROLE_ADMIN, ROLE_TEST',
-            ],
+            'roles' => 'ROLE_ADMIN, ROLE_TEST',
         ]);
         $content = json_decode($client->getResponse()->getContent(), true);
         self::assertEquals('ROLE_TEST', $content['roles'][2]);

@@ -4,28 +4,26 @@ Feature: Settings bulk update
   Scenario: Update multiple settings
     Given I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "PATCH" request to "/api/{version}/settings/bulk/" with body:
+    And I send a "PATCH" request to "/api/v2/settings/bulk/" with body:
     """
     {
-      "settings":{
-        "bulk":[
-          {
-            "name":"primary_font_family",
-            "value":"Lato"
-          },
-          {
-            "name":"secondary_font_family",
-            "value":"Oswald",
-            "scope":"scope"
-          }
-        ]
-      }
+      "bulk":[
+        {
+          "name":"primary_font_family",
+          "value":"Lato"
+        },
+        {
+          "name":"secondary_font_family",
+          "value":"Oswald",
+          "scope":"scope"
+        }
+      ]
     }
     """
     Then the response status code should be 200
     And I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "GET" request to "/api/{version}/settings/"
+    And I send a "GET" request to "/api/v2/settings/"
     Then the response status code should be 200
     And the JSON should be equal to:
     """
@@ -198,28 +196,26 @@ Feature: Settings bulk update
   Scenario: Allow to change only name and value of setting
     Given I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "PATCH" request to "/api/{version}/settings/bulk/" with body:
+    And I send a "PATCH" request to "/api/v2/settings/bulk/" with body:
     """
     {
-      "settings":{
-        "bulk":[
-          {
-            "name":"primary_font_family",
-            "value":"Lato"
-          },
-          {
-            "name":"secondary_font_family",
-            "value":"Oswald",
-            "scope":"fake"
-          }
-        ]
-      }
+      "bulk":[
+        {
+          "name":"primary_font_family",
+          "value":"Lato"
+        },
+        {
+          "name":"secondary_font_family",
+          "value":"Oswald",
+          "scope":"fake"
+        }
+      ]
     }
     """
     Then the response status code should be 200
     And I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "GET" request to "/api/{version}/settings/"
+    And I send a "GET" request to "/api/v2/settings/"
     Then the response status code should be 200
     And the JSON should be equal to:
     """
@@ -392,41 +388,39 @@ Feature: Settings bulk update
   Scenario: Checking if theme_logo setting is not overridden
     Given I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "POST" request to "/api/{version}/theme/logo_upload/" with parameters:
+    And I send a "POST" request to "/api/v2/theme/logo_upload/" with parameters:
       | key     | value      |
       | logo    | @logo.png  |
     Then the response status code should be 201
     And I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "PATCH" request to "/api/{version}/settings/bulk/" with body:
+    And I send a "PATCH" request to "/api/v2/settings/bulk/" with body:
     """
     {
-      "settings":{
-        "bulk":[
-          {
-            "name":"primary_font_family",
-            "value":"Lato"
-          },
-          {
-            "name":"secondary_font_family",
-            "value":"Oswald"
-          },
-          {
-            "name":"switch",
-            "value":true
-          },
-          {
-            "name":"body_font_size",
-            "value":16
-          }
-        ]
-      }
+      "bulk":[
+        {
+          "name":"primary_font_family",
+          "value":"Lato"
+        },
+        {
+          "name":"secondary_font_family",
+          "value":"Oswald"
+        },
+        {
+          "name":"switch",
+          "value":true
+        },
+        {
+          "name":"body_font_size",
+          "value":16
+        }
+      ]
     }
     """
     Then the response status code should be 200
     And I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "GET" request to "/api/{version}/settings/"
+    And I send a "GET" request to "/api/v2/settings/"
     Then the response status code should be 200
     And the JSON nodes should contain:
       | [17].name               | primary_font_family                 |
@@ -439,23 +433,21 @@ Feature: Settings bulk update
       | [19].value              | 16                                  |
     And I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "PATCH" request to "/api/{version}/settings/bulk/" with body:
+    And I send a "PATCH" request to "/api/v2/settings/bulk/" with body:
     """
     {
-      "settings":{
-        "bulk":[
-          {
-            "name":"switch",
-            "value":false
-          }
-        ]
-      }
+      "bulk":[
+        {
+          "name":"switch",
+          "value":false
+        }
+      ]
     }
     """
     Then the response status code should be 200
     And I am authenticated as "test.user"
     When I add "Content-Type" header equal to "application/json"
-    And I send a "GET" request to "/api/{version}/settings/"
+    And I send a "GET" request to "/api/v2/settings/"
     Then the response status code should be 200
     And the JSON nodes should contain:
       | [20].name                | switch   |

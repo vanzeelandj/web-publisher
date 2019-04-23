@@ -29,7 +29,7 @@ use SWP\Bundle\ElasticSearchBundle\Criteria\Criteria;
 
 class ArticleRepository extends Repository
 {
-    public function findByCriteria(Criteria $criteria, array $extraFields): PaginatorAdapterInterface
+    public function findByCriteria(Criteria $criteria, array $extraFields = [], bool $searchByBody = false): PaginatorAdapterInterface
     {
         $fields = $criteria->getFilters()->getFields();
         $boolFilter = new BoolQuery();
@@ -41,7 +41,9 @@ class ArticleRepository extends Repository
                 $searchBy[] = 'extra.'.$extraField;
             }
 
-            $searchBy[] = 'body';
+            if ($searchByBody) {
+                $searchBy[] = 'body';
+            }
 
             $priority = 1;
             foreach (array_reverse($searchBy) as $key => $field) {
