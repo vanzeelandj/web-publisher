@@ -43,6 +43,7 @@ class SWPCoreExtension extends Extension implements PrependExtensionInterface
         $loader->load('output_channel_adapter.yml');
         $loader->load('websocket.yml');
         $loader->load('commands.yml');
+        $loader->load('controllers.yaml');
         $this->loadDeviceListener($config, $loader);
 
         $config = $container->resolveEnvPlaceholders($config);
@@ -86,5 +87,19 @@ class SWPCoreExtension extends Extension implements PrependExtensionInterface
         );
 
         $container->prependExtensionConfig('fos_http_cache', $fosHttpCacheConfig);
+
+        $nelmioCorsConfig = [
+            'defaults' => [
+                'allow_origin' => [
+                    '%env(CORS_ALLOW_ORIGIN)%',
+                ],
+            ],
+        ];
+        $nelmioCorsConfig = $container->resolveEnvPlaceholders(
+            $nelmioCorsConfig,
+            true
+        );
+
+        $container->prependExtensionConfig('nelmio_cors', $nelmioCorsConfig);
     }
 }

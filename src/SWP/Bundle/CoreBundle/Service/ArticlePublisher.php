@@ -101,7 +101,7 @@ final class ArticlePublisher implements ArticlePublisherInterface
     /**
      * {@inheritdoc}
      */
-    public function unpublish(PackageInterface $package, array $tenants = [])
+    public function unpublish(PackageInterface $package, array $tenants = []): void
     {
         foreach ($package->getArticles() as $article) {
             foreach ($tenants as $tenant) {
@@ -116,7 +116,7 @@ final class ArticlePublisher implements ArticlePublisherInterface
         $this->articleRepository->flush();
     }
 
-    public function publish(PackageInterface $package, CompositePublishActionInterface $action)
+    public function publish(PackageInterface $package, CompositePublishActionInterface $action): void
     {
         $originalRequestTenant = $this->tenantContext->getTenant();
         /** @var PublishDestinationInterface $destination */
@@ -175,6 +175,10 @@ final class ArticlePublisher implements ArticlePublisherInterface
     private function addToContentLists(array $contentListsPositions, ArticleInterface $article): void
     {
         foreach ($contentListsPositions as $contentListsPosition) {
+            if (!is_int($contentListsPosition['id'])) {
+                return;
+            }
+
             $contentList = $this->contentListRepository->findListById($contentListsPosition['id']);
             if (null === $contentList) {
                 continue;
