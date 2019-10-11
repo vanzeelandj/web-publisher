@@ -231,6 +231,13 @@ services:
         public: true
         parent: swp.security.token_authenticator
 
+    swp.security.external_oauth_authenticator:
+        class: SWP\Bundle\CoreBundle\Security\Authenticator\ExternalOauthAuthenticator
+        arguments:
+            - "@knpu.oauth2.registry"
+            - "@fos_user.user_manager"
+            - "@security.helper"
+
     swp.security.user_provider:
         class: SWP\Bundle\CoreBundle\Security\Provider\UserProvider
         arguments:
@@ -377,6 +384,12 @@ services:
             - { name: jms_serializer.event_subscriber }
 
     SWP\Bundle\CoreBundle\Serializer\ContentListAwareSerializationSubscriber:
+        arguments:
+            - '@swp.repository.content_list_item'
+        tags:
+            - { name: jms_serializer.event_subscriber }
+
+    SWP\Bundle\CoreBundle\Serializer\ContentListSerializationSubscriber:
         arguments:
             - '@swp.repository.content_list_item'
         tags:
@@ -696,6 +709,7 @@ services:
         public: true
         arguments:
             - '@router'
+            - '@doctrine_cache.providers.main_cache'
 
     SWP\Bundle\CoreBundle\EventListener\SetArticlePublishDateListener:
         arguments:
@@ -727,6 +741,7 @@ services:
             - '@swp.repository.article_events'
             - '@swp.factory.article_statistics'
             - '@swp.factory.article_events'
+            - '@swp.object_manager.article'
 
     Sylius\Bundle\ThemeBundle\HierarchyProvider\ThemeHierarchyProviderInterface: '@sylius.theme.hierarchy_provider'
 
@@ -738,3 +753,5 @@ services:
 
     SWP\Bundle\CoreBundle\Service\SeoImageUploaderInterface:
         alias: SWP\Bundle\CoreBundle\Service\SeoImageUploader
+
+    SWP\Bundle\CoreBundle\Factory\ApiKeyFactory: '@swp.factory.api_key'

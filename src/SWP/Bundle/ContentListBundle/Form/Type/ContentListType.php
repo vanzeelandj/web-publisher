@@ -36,49 +36,82 @@ class ContentListType extends AbstractType
                 'constraints' => [
                     new NotBlank(),
                 ],
-                'description' => 'List name',
+                'help' => 'List name',
             ])
             ->add('type', ContentListTypeSelectorType::class, [
                 'constraints' => [
                     new NotBlank(),
                 ],
-                'description' => 'List type',
+                'help' => 'List type',
             ])
             ->add('description', TextType::class, [
                 'required' => false,
-                'description' => 'List description',
+                'help' => 'List description',
             ])
             ->add('limit', IntegerType::class, [
                 'required' => false,
-                'description' => 'List limit',
+                'help' => 'List limit',
             ])
             ->add('cacheLifeTime', IntegerType::class, [
                 'required' => false,
-                'description' => 'List cache life time',
+                'help' => 'List cache life time',
             ])
             ->add('filters', TextType::class, [
                 'required' => false,
-                'description' => 'Content list filters in JSON format.',
+                'help' => 'Content list filters in JSON format.',
             ])
         ;
 
         $builder->get('filters')
             ->addModelTransformer(new CallbackTransformer(
-                function ($value) {
-                    return json_encode($value);
+                static function ($value) {
+                    if (is_array($value)) {
+                        $value = self::transformArrayKeys($value, 'camel');
+
+                        return json_encode($value);
+                    }
+
+                    return json_encode([]);
                 },
-                function ($value) {
+                static function ($value) {
                     if (is_array($value)) {
                         return $value;
                     }
 
                     if (null !== $value && '' !== $value) {
-                        return json_decode($value, true);
+                        $value = json_decode($value, true);
+                        if (is_array($value)) {
+                            return $value;
+                        }
                     }
 
                     return [];
                 }
-            ));
+            ))
+        ->addViewTransformer(new CallbackTransformer(
+            static function ($value) {
+                if (is_array($value)) {
+                    return json_encode(self::transformArrayKeys($value, 'snake'));
+                }
+
+                if (null !== $value && '' !== $value) {
+                    $value = json_decode($value, true);
+                    if (is_array($value)) {
+                        return json_encode(self::transformArrayKeys($value, 'snake'));
+                    }
+                }
+
+                return json_encode([]);
+            },
+            static function ($value) {
+                $value = json_decode($value, true);
+                if (is_array($value)) {
+                    $value = self::transformArrayKeys($value, 'camel');
+                }
+
+                return json_encode($value);
+            }
+        ));
     }
 
     /**
@@ -97,5 +130,35 @@ class ContentListType extends AbstractType
     public function getBlockPrefix()
     {
         return '';
+    }
+
+    public static function snakeToCamel(string $str): string
+    {
+        return lcfirst(str_replace(' ', '', ucwords(str_replace('_', ' ', $str))));
+    }
+
+    public static function camelToSnake(string $str): string
+    {
+        $str = preg_replace('/(?<=\\w)(?=[A-Z])/', '_$1', $str);
+
+        return  strtolower($str);
+    }
+
+    public static function transformArrayKeys(array $data, string $outputCase): array
+    {
+        foreach ($data as $key => $item) {
+            $newKey = null;
+            if ('camel' === $outputCase) {
+                $data[$newKey = self::snakeToCamel($key)] = $item;
+            } elseif ('snake' === $outputCase) {
+                $data[$newKey = self::camelToSnake($key)] = $item;
+            }
+
+            if ($newKey !== $key) {
+                unset($data[$key]);
+            }
+        }
+
+        return $data;
     }
 }

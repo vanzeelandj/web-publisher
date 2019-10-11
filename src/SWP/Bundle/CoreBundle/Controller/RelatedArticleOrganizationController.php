@@ -16,12 +16,14 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\CoreBundle\Controller;
 
-use Nelmio\ApiDocBundle\Annotation\ApiDoc;
+use Nelmio\ApiDocBundle\Annotation\Model;
+use Nelmio\ApiDocBundle\Annotation\Operation;
+use Swagger\Annotations as SWG;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\CoreBundle\Model\RelatedArticleList;
 use SWP\Bundle\CoreBundle\Model\RelatedArticleListItem;
 use SWP\Bundle\MultiTenancyBundle\MultiTenancyEvents;
-use SWP\Component\Bridge\Model\GroupInterface;
+use SWP\Component\Bridge\Model\ItemInterface;
 use SWP\Component\Common\Exception\NotFoundHttpException;
 use SWP\Component\Common\Response\SingleResourceResponse;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
@@ -31,13 +33,23 @@ use Symfony\Component\Routing\Annotation\Route;
 class RelatedArticleOrganizationController extends Controller
 {
     /**
-     * @ApiDoc(
-     *     resource=true,
-     *     description="Returns a list of related articles",
-     *     statusCodes={
-     *         200="Returned on success"
-     *     }
+     * @Operation(
+     *     tags={"related article"},
+     *     summary="Returns a list of related articles",
+     *     @SWG\Parameter(
+     *         name="body",
+     *         in="body",
+     *         @SWG\Schema(
+     *             ref=@Model(type=\SWP\Bundle\CoreBundle\Model\Package::class)
+     *         )
+     *     ),
+     *     @SWG\Response(
+     *         response="200",
+     *         description="Returned on success",
+     *         @Model(type=\SWP\Bundle\CoreBundle\Model\RelatedArticleList::class, groups={"api"})
+     *     )
      * )
+     *
      * @Route("/api/{version}/organization/articles/related/", methods={"POST"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_core_organization_related_articles")
      */
     public function postAction(Request $request)
@@ -51,13 +63,16 @@ class RelatedArticleOrganizationController extends Controller
     }
 
     /**
-     * @ApiDoc(
-     *     resource=true,
-     *     description="Returns a list of related articles",
-     *     statusCodes={
-     *         200="Returned on success"
-     *     }
+     * @Operation(
+     *     tags={"related article"},
+     *     summary="Returns a list of related articles",
+     *     @SWG\Response(
+     *         response="200",
+     *         description="Returned on success",
+     *         @Model(type=\SWP\Bundle\CoreBundle\Model\RelatedArticleList::class, groups={"api"})
+     *     )
      * )
+     *
      * @Route("/api/{version}/packages/{id}/related/", methods={"GET"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_core_packages_related_articles", requirements={"id"="\d+"})
      */
     public function getRelatedAction(string $id)
@@ -71,8 +86,8 @@ class RelatedArticleOrganizationController extends Controller
 
     private function getRelated(PackageInterface $package): RelatedArticleList
     {
-        $relatedItemsGroups = $package->getGroups()->filter(static function ($group) {
-            return GroupInterface::TYPE_RELATED === $group->getType();
+        $relatedItemsGroups = $package->getItems()->filter(static function ($group) {
+            return ItemInterface::TYPE_TEXT === $group->getType();
         });
 
         $relatedArticlesList = new RelatedArticleList();
@@ -84,26 +99,24 @@ class RelatedArticleOrganizationController extends Controller
         $this->get('event_dispatcher')->dispatch(MultiTenancyEvents::TENANTABLE_DISABLE);
         $articleRepository = $this->get('swp.repository.article');
 
-        foreach ($relatedItemsGroups as $relatedItemsGroup) {
-            foreach ($relatedItemsGroup->getItems() as $item) {
-                if (null === ($existingArticles = $articleRepository->findBy(['code' => $item->getGuid()]))) {
-                    continue;
-                }
-
-                $tenants = [];
-                foreach ($existingArticles as $existingArticle) {
-                    $tenantCode = $existingArticle->getTenantCode();
-                    $tenant = $this->get('swp.repository.tenant')->findOneByCode($tenantCode);
-
-                    $tenants[] = $tenant;
-                }
-
-                $relatedArticleListItem = new RelatedArticleListItem();
-                $relatedArticleListItem->setTenants($tenants);
-                $relatedArticleListItem->setTitle($item->getHeadline());
-
-                $relatedArticlesList->addRelatedArticleItem($relatedArticleListItem);
+        foreach ($relatedItemsGroups as $item) {
+            if (null === ($existingArticles = $articleRepository->findBy(['code' => $item->getGuid()]))) {
+                continue;
             }
+
+            $tenants = [];
+            foreach ($existingArticles as $existingArticle) {
+                $tenantCode = $existingArticle->getTenantCode();
+                $tenant = $this->get('swp.repository.tenant')->findOneByCode($tenantCode);
+
+                $tenants[] = $tenant;
+            }
+
+            $relatedArticleListItem = new RelatedArticleListItem();
+            $relatedArticleListItem->setTenants($tenants);
+            $relatedArticleListItem->setTitle($item->getHeadline());
+
+            $relatedArticlesList->addRelatedArticleItem($relatedArticleListItem);
         }
 
         return $relatedArticlesList;

@@ -71,11 +71,15 @@ security:
                 failure_handler:          lexik_jwt_authentication.handler.authentication_failure
             logout:
                 path: security_logout
+            guard:
+                authenticators:
+                    - swp.security.external_oauth_authenticator
             anonymous: true
 
     access_control:
         - { path: "^/preview/article", roles: ROLE_EDITOR }
         - { path: "^/api/[v0-9]{2}/users/profile/*", roles: ROLE_USER }
+        - { path: "^/api/[v0-9]{2}/users/settings", roles: ROLE_USER }
         - { path: "^/api/[v0-9]{2}/token/refresh", roles: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: "^/resetting", role: IS_AUTHENTICATED_ANONYMOUSLY }
         - { path: "^/api", roles: ROLE_INTERNAL_API }

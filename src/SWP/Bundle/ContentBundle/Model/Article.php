@@ -27,12 +27,17 @@ use SWP\Component\Common\Model\TimestampableTrait;
 use SWP\Component\Common\Model\TranslatableTrait;
 use SWP\Component\Seo\Model\SeoMetadataAwareTrait;
 
-/**
- * Class Article.
- */
 class Article implements ArticleInterface
 {
-    use TranslatableTrait, SoftDeletableTrait, TimestampableTrait, AuthorsAwareTrait, KeywordsAwareTrait, RelatedArticlesAwareTrait, TimestampableCancelTrait, SeoMetadataAwareTrait;
+    use TranslatableTrait;
+    use SoftDeletableTrait;
+    use TimestampableTrait;
+    use AuthorsAwareTrait;
+    use KeywordsAwareTrait;
+    use RelatedArticlesAwareTrait;
+    use TimestampableCancelTrait;
+    use SeoMetadataAwareTrait;
+    use MediaAwareTrait;
 
     /**
      * @var mixed
@@ -206,16 +211,6 @@ class Article implements ArticleInterface
         $this->body = \trim($body);
     }
 
-    public function getMedia()
-    {
-        return $this->media;
-    }
-
-    public function setMedia(Collection $media)
-    {
-        $this->media = $media;
-    }
-
     public function getTitle()
     {
         return $this->title;
@@ -315,16 +310,6 @@ class Article implements ArticleInterface
     public function setLead($lead)
     {
         $this->lead = $lead;
-    }
-
-    public function getFeatureMedia()
-    {
-        return $this->featureMedia;
-    }
-
-    public function setFeatureMedia(ArticleMediaInterface $featureMedia = null)
-    {
-        $this->featureMedia = $featureMedia;
     }
 
     public function getCode(): string
