@@ -16,19 +16,19 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\CoreBundle\Model;
 
-use SWP\Bundle\AnalyticsBundle\Model\ArticleEventsTrait;
 use SWP\Bundle\AnalyticsBundle\Model\ContentListsAwareTrait;
 use SWP\Bundle\ContentBundle\Model\Article as BaseArticle;
+use SWP\Component\GeoIP\Model\GeoIpPlaceInterface;
+use SWP\Component\GeoIP\Model\Place;
 use SWP\Component\MultiTenancy\Model\OrganizationAwareTrait;
 use SWP\Component\MultiTenancy\Model\TenantAwareTrait;
 use SWP\Component\Paywall\Model\PaywallSecuredTrait;
 
-class Article extends BaseArticle implements ArticleInterface
+class Article extends BaseArticle implements ArticleInterface, GeoIpPlaceInterface
 {
     use TenantAwareTrait;
     use OrganizationAwareTrait;
     use PaywallSecuredTrait;
-    use ArticleEventsTrait;
     use ContentListsAwareTrait;
 
     /**
@@ -55,6 +55,9 @@ class Article extends BaseArticle implements ArticleInterface
      * @var int
      */
     protected $commentsCount = 0;
+
+    /** @var Place */
+    protected $geoIpPlace;
 
     /**
      * {@inheritdoc}
@@ -155,5 +158,17 @@ class Article extends BaseArticle implements ArticleInterface
     public function setCommentsCount(int $commentsCount): void
     {
         $this->commentsCount = $commentsCount;
+    }
+
+    public function getGeoIpPlaces(): array
+    {
+        $places = $this->getPlaces();
+
+        $geoPlaces = [];
+        foreach ($places as $place) {
+            $geoPlaces[] = new Place($place['country'] ?? '', $place['state'] ?? '');
+        }
+
+        return $geoPlaces;
     }
 }

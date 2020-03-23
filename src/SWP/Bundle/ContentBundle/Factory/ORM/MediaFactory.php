@@ -17,6 +17,8 @@ declare(strict_types=1);
 namespace SWP\Bundle\ContentBundle\Factory\ORM;
 
 use Psr\Log\LoggerInterface;
+use Sentry\Breadcrumb;
+use Sentry\State\HubInterface;
 use SWP\Bundle\ContentBundle\File\FileDownloaderInterface;
 use SWP\Bundle\ContentBundle\Manager\MediaManagerInterface;
 use SWP\Bundle\ContentBundle\Factory\MediaFactoryInterface;
@@ -24,6 +26,7 @@ use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleMediaInterface;
 use SWP\Bundle\ContentBundle\Model\FileInterface;
 use SWP\Bundle\ContentBundle\Model\ImageInterface;
+use SWP\Bundle\ContentBundle\Model\MediaAwareInterface;
 use SWP\Bundle\ContentBundle\Provider\ORM\ArticleMediaAssetProviderInterface;
 use SWP\Component\Bridge\Model\ItemInterface;
 use SWP\Component\Bridge\Model\RenditionInterface;
@@ -43,13 +46,16 @@ class MediaFactory implements MediaFactoryInterface
 
     protected $fileDownloader;
 
+    private $sentryHub;
+
     public function __construct(
         ArticleMediaAssetProviderInterface $articleMediaAssetProvider,
         FactoryInterface $factory,
         ImageRenditionFactoryInterface $imageRenditionFactory,
         MediaManagerInterface $mediaManager,
         LoggerInterface $logger,
-        FileDownloaderInterface $fileDownloader
+        FileDownloaderInterface $fileDownloader,
+        HubInterface $sentryHub
     ) {
         $this->articleMediaAssetProvider = $articleMediaAssetProvider;
         $this->factory = $factory;
@@ -57,14 +63,20 @@ class MediaFactory implements MediaFactoryInterface
         $this->mediaManager = $mediaManager;
         $this->logger = $logger;
         $this->fileDownloader = $fileDownloader;
+        $this->sentryHub = $sentryHub;
     }
 
-    public function create(ArticleInterface $article, string $key, ItemInterface $item): ArticleMediaInterface
+    public function create(ArticleInterface $article, string $key, ItemInterface $item, string $type = ArticleMediaInterface::TYPE_EMBEDDED_IMAGE): ArticleMediaInterface
     {
         /** @var ArticleMediaInterface $articleMedia */
         $articleMedia = $this->factory->create();
         $articleMedia->setArticle($article);
         $articleMedia->setFromItem($item);
+        $articleMedia->setMediaType($type);
+
+        if (MediaAwareInterface::KEY_FEATURE_MEDIA === $key) {
+            $articleMedia->setMediaType(ArticleMediaInterface::TYPE_FEATURE_MEDIA);
+        }
 
         if (ItemInterface::TYPE_PICTURE === $item->getType()) {
             return $this->createImageMedia($articleMedia, $key, $item);
@@ -131,7 +143,7 @@ class MediaFactory implements MediaFactoryInterface
         try {
             return $this->downloadAsset($rendition->getHref(), $rendition->getMedia(), $rendition->getMimetype());
         } catch (\Exception $e) {
-            $this->logger->error(\sprintf('%s: %s', $rendition->getHref(), $e->getMessage()));
+            $this->logException($e, $rendition);
 
             return null;
         }
@@ -147,6 +159,12 @@ class MediaFactory implements MediaFactoryInterface
             [$width, $height] = \getimagesize($uploadedFile->getRealPath());
             $file->setWidth($width);
             $file->setHeight($height);
+            $size = \filesize($uploadedFile->getRealPath());
+            $size = $size / 1024;
+            $size = round($size);
+            if (null !== $size) {
+                $file->setLength($size);
+            }
         }
 
         return $file;
@@ -159,5 +177,21 @@ class MediaFactory implements MediaFactoryInterface
                 return 'original' === $rendition->getName();
             }
         )->first();
+    }
+
+    private function logException(\Exception $e, RenditionInterface $rendition): void
+    {
+        $this->logger->error(\sprintf('%s: %s', $rendition->getHref(), $e->getMessage()), ['trace' => $e->getTraceAsString()]);
+        $this->sentryHub->addBreadcrumb(new Breadcrumb(
+            Breadcrumb::LEVEL_DEBUG,
+            Breadcrumb::TYPE_DEFAULT,
+            'publishing',
+            'Media',
+            [
+                'rendition id' => $rendition->getId(),
+                'rendition media' => $rendition->getMedia(),
+            ]
+        ));
+        $this->sentryHub->captureException($e);
     }
 }

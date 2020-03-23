@@ -23,16 +23,15 @@ use SWP\Bundle\AnalyticsBundle\Model\ArticleStatisticsInterface;
 use SWP\Bundle\ContentBundle\Model\ArticleAuthor;
 use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Model\AuthorMedia;
-use SWP\Bundle\ContentBundle\Model\RelatedArticle;
-use SWP\Bundle\CoreBundle\Model\Image;
 use SWP\Bundle\ContentBundle\Model\ImageRendition;
+use SWP\Bundle\ContentBundle\Model\RelatedArticle;
 use SWP\Bundle\ContentBundle\Model\RouteInterface;
-use SWP\Bundle\CoreBundle\Model\ArticleEvent;
-use SWP\Bundle\CoreBundle\Model\ArticleEventInterface;
+use SWP\Bundle\CoreBundle\Model\Image;
 use SWP\Bundle\CoreBundle\Model\PackageInterface;
 use SWP\Bundle\FixturesBundle\AbstractFixture;
 use SWP\Bundle\FixturesBundle\Faker\Provider\ArticleDataProvider;
 use SWP\Component\Bridge\Model\ExternalDataInterface;
+use SWP\Component\Bridge\Model\Rendition;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterface
@@ -311,7 +310,7 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     $articleMedia->setMimetype('image/jpeg');
                     $manager->persist($articleMedia);
 
-                    $randNumber = rand(1, 9);
+                    $randNumber = random_int(1, 9);
                     /* @var $rendition Rendition */
                     foreach ($renditions as $key => $rendition) {
                         if ('original' === $key) {
@@ -323,7 +322,7 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                             $fakeImage = '/tmp/'.$randNumber.'org'.$key.'.jpg';
                         }
 
-                        $mediaId = uniqid();
+                        $mediaId = uniqid('', true);
                         $uploadedFile = new UploadedFile(
                             $fakeImage,
                             $mediaId,
@@ -356,15 +355,6 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     'route' => 'news',
                     'locale' => 'en',
                     'pageViews' => 20,
-                    'pageViewsDates' => [
-                        '-1 day' => 3,
-                        '-2 days' => 2,
-                        '-3 days' => 3,
-                        '-4 days' => 1,
-                        '-5 days' => 6,
-                        '-6 days' => 1,
-                        '-7 days' => 4,
-                    ],
                     'extra' => [
                         'custom-field' => 'my custom field',
                     ],
@@ -383,15 +373,6 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     'route' => 'sports',
                     'locale' => 'en',
                     'pageViews' => 30,
-                    'pageViewsDates' => [
-                        '-1 day' => 3,
-                        '-2 days' => 2,
-                        '-3 days' => 8,
-                        '-4 days' => 1,
-                        '-5 days' => 6,
-                        '-6 days' => 6,
-                        '-7 days' => 4,
-                    ],
                     'authors' => [
                         'Test Person',
                     ],
@@ -411,14 +392,6 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     'route' => 'news',
                     'locale' => 'en',
                     'pageViews' => 10,
-                    'pageViewsDates' => [
-                        '-1 day' => 3,
-                        '-2 days' => 3,
-                        '-4 days' => 1,
-                        '-5 days' => 1,
-                        '-6 days' => 1,
-                        '-7 days' => 1,
-                    ],
                     'authors' => [
                         'John Doe',
                     ],
@@ -433,9 +406,6 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     'route' => 'news',
                     'locale' => 'en',
                     'pageViews' => 5,
-                    'pageViewsDates' => [
-                        '- 7 days' => 5,
-                    ],
                     'authors' => [
                         'John Doe Second',
                     ],
@@ -448,7 +418,7 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     'route' => 'articles/features',
                     'locale' => 'en',
                     'pageViews' => 0,
-                    'pageViewsDates' => [],
+                    'publishedAt' => (new \DateTime())->modify('-3 days'),
                     'authors' => [
                         'Test Person',
                     ],
@@ -477,6 +447,23 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                 $article->setRoute($this->getRouteByName($articleData['route']));
                 $article->setLocale($articleData['locale']);
                 $article->setCode(md5($articleData['title']));
+                $article->setMetadata([
+                    'located' => 'Sydney',
+                    'byline' => 'Jhon Doe',
+                    'place' => [
+                        [
+                            'qcode' => 'AUS',
+                            'world_region' => 'Rest Of World',
+                        ], [
+                            'qcode' => 'EUR',
+                            'world_region' => 'Europe',
+                        ],
+                    ],
+                ]);
+                if (isset($articleData['publishedAt'])) {
+                    $article->setPublishedAt($articleData['publishedAt']);
+                }
+
                 $manager->persist($article);
                 foreach ($persistedKeywords as $index => $persistedKeyword) {
                     if ($index < 3) {
@@ -533,7 +520,7 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
                     }
                 }
 
-                $articleStatistics = $this->createArticleStatistics($articleData['pageViews'], $articleData['pageViewsDates'], $article, $manager);
+                $articleStatistics = $this->createArticleStatistics($articleData['pageViews'], $article);
                 $manager->persist($articleStatistics);
                 $manager->persist($package);
                 $article->setPackage($package);
@@ -556,9 +543,9 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
 
             $article->addRelatedArticle($related1);
             $article->addRelatedArticle($related2);
-
-            $manager->flush();
         }
+
+        $manager->flush();
     }
 
     private function createPackage(array $articleData): PackageInterface
@@ -579,25 +566,12 @@ class LoadArticlesData extends AbstractFixture implements OrderedFixtureInterfac
         return $package;
     }
 
-    private function createArticleStatistics(int $pageViewsNumber, array $pageViewsDates, ArticleInterface $article, ObjectManager $manager): ArticleStatisticsInterface
+    private function createArticleStatistics(int $pageViewsNumber, ArticleInterface $article): ArticleStatisticsInterface
     {
         /** @var ArticleStatisticsInterface $articleStatistics */
         $articleStatistics = $this->container->get('swp.factory.article_statistics')->create();
         $articleStatistics->setArticle($article);
         $articleStatistics->setPageViewsNumber($pageViewsNumber);
-
-        foreach ($pageViewsDates as $dateValue => $number) {
-            for ($i = $number; $i > 0; --$i) {
-                $articleEvent = new ArticleEvent();
-                $articleEvent->setArticleStatistics($articleStatistics);
-                $articleEvent->setAction(ArticleEventInterface::ACTION_PAGEVIEW);
-                $date = new \DateTime();
-                $date->modify($dateValue);
-                $date->setTime(mt_rand(0, 23), (int) str_pad((string) mt_rand(0, 59), 2, '0', STR_PAD_LEFT));
-                $articleEvent->setCreatedAt($date);
-                $manager->persist($articleEvent);
-            }
-        }
 
         return $articleStatistics;
     }

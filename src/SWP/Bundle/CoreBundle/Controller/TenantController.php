@@ -61,8 +61,10 @@ class TenantController extends FOSRestController
     {
         $tenants = $this->getTenantRepository()
             ->getPaginatedByCriteria(new Criteria(), $request->query->get('sorting', []), new PaginationData($request));
+        $responseContext = new ResponseContext();
+        $responseContext->setSerializationGroups(['Default', 'api', 'details_api']);
 
-        return new ResourcesListResponse($tenants);
+        return new ResourcesListResponse($tenants, $responseContext);
     }
 
     /**
@@ -241,6 +243,9 @@ class TenantController extends FOSRestController
             }
             if (array_key_exists('paywallEnabled', $formData)) {
                 $settingsManager->set('paywall_enabled', (bool) $formData['paywallEnabled'], ScopeContextInterface::SCOPE_TENANT, $tenant);
+            }
+            if (array_key_exists('defaultLanguage', $formData)) {
+                $settingsManager->set('default_language', $formData['defaultLanguage'], ScopeContextInterface::SCOPE_TENANT, $tenant);
             }
 
             return new SingleResourceResponse($tenant);

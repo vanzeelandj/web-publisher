@@ -37,6 +37,9 @@ SWP\Bundle\ContentBundle\Model\ArticleMedia:
         copyrightHolder:
             type: string
             nullable: true
+        mediaType:
+            type: string
+            nullable: true
         createdAt:
             type: datetime
             gedmo:
@@ -74,6 +77,7 @@ SWP\Bundle\ContentBundle\Model\ArticleMedia:
             targetEntity: SWP\Bundle\ContentBundle\Model\ImageInterface
             inversedBy: media
             cascade: ["persist"]
+            fetch: EAGER
             joinColumn:
                 name: image_id
                 referencedColumnName: id

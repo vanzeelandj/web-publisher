@@ -23,14 +23,20 @@ use SWP\Bundle\CoreBundle\Model\ArticleInterface;
 use SWP\Bundle\CoreBundle\Model\ContentListItemInterface;
 use SWP\Bundle\CoreBundle\Repository\ContentListItemRepositoryInterface;
 use SWP\Component\ContentList\Model\ListContentInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 final class ContentListAwareSerializationSubscriber implements EventSubscriberInterface
 {
     private $contentListItemRepository;
 
-    public function __construct(ContentListItemRepositoryInterface $contentListItemRepository)
-    {
+    private $requestStack;
+
+    public function __construct(
+        ContentListItemRepositoryInterface $contentListItemRepository,
+        RequestStack $requestStack
+    ) {
         $this->contentListItemRepository = $contentListItemRepository;
+        $this->requestStack = $requestStack;
     }
 
     public static function getSubscribedEvents()
@@ -46,6 +52,20 @@ final class ContentListAwareSerializationSubscriber implements EventSubscriberIn
 
     public function onPreSerialize(ObjectEvent $event)
     {
+        $masterRequest = $this->requestStack->getMasterRequest();
+        if (
+            !$masterRequest ||
+            !in_array(
+                $masterRequest->get('_route'),
+                [
+                    'swp_api_content_show_articles',
+                    'swp_api_core_show_package',
+                ],
+                true
+            )) {
+            return;
+        }
+
         $object = $event->getObject();
         if (!$object instanceof ArticleInterface || !$object instanceof ListContentInterface) {
             return;
@@ -59,7 +79,7 @@ final class ContentListAwareSerializationSubscriber implements EventSubscriberIn
         $contentLists = [];
         /** @var ContentListItemInterface $contentListItem */
         foreach ($contentListItems as $contentListItem) {
-            if (!in_array($contentList = $contentListItem->getContentList(), $contentLists)) {
+            if (!in_array($contentList = $contentListItem->getContentList(), $contentLists, true)) {
                 $contentLists[] = $contentList;
             }
         }

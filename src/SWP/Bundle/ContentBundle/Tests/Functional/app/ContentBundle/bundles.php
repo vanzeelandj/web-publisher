@@ -35,10 +35,12 @@ return [
     new Fidry\AliceDataFixtures\Bridge\Symfony\FidryAliceDataFixturesBundle(),
     new Nelmio\Alice\Bridge\Symfony\NelmioAliceBundle(),
     new Bazinga\Bundle\HateoasBundle\BazingaHateoasBundle(),
+    new Sentry\SentryBundle\SentryBundle(),
 
     new SWP\Bundle\TemplatesSystemBundle\SWPTemplatesSystemBundle(),
     new SWP\Bundle\BridgeBundle\SWPBridgeBundle(),
     new SWP\Bundle\MenuBundle\SWPMenuBundle(),
     new SWP\Bundle\SeoBundle\SWPSeoBundle(),
+    new SWP\Bundle\RedirectRouteBundle\SWPRedirectRouteBundle(),
     new SWP\Bundle\ContentBundle\SWPContentBundle(),
 ];

@@ -21,6 +21,7 @@ use Swagger\Annotations as SWG;
 use SWP\Bundle\ElasticSearchBundle\Criteria\Criteria;
 use SWP\Bundle\ElasticSearchBundle\Repository\ArticleRepository;
 use SWP\Component\Common\Response\ResourcesListResponse;
+use SWP\Component\Common\Response\ResponseContext;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
@@ -57,6 +58,14 @@ class ArticleSearchController extends Controller
      *         name="author",
      *         in="query",
      *         description="Article authors",
+     *         required=false,
+     *         type="array",
+     *         @SWG\Items(type="string")
+     *     ),
+     *     @SWG\Parameter(
+     *         name="keywords",
+     *         in="query",
+     *         description="Article keywords",
      *         required=false,
      *         type="array",
      *         @SWG\Items(type="string")
@@ -145,10 +154,15 @@ class ArticleSearchController extends Controller
                 'tenantCode' => $currentTenant->getCode(),
                 'sources' => array_filter((array) $request->query->get('source', [])),
                 'metadata' => array_filter((array) $request->query->get('metadata', [])),
+                'keywords' => array_filter((array) $request->query->get('keywords', [])),
             ]
         );
 
         $extraFields = $this->get('service_container')->getParameter('env(ELASTICA_ARTICLE_EXTRA_FIELDS)');
+
+        $options = [
+            'sortNestedPath' => 'articleStatistics.pageViewsNumber',
+        ];
 
         $repositoryManager = $this->get('fos_elastica.manager');
         /** @var ArticleRepository $repository */
@@ -158,9 +172,26 @@ class ArticleSearchController extends Controller
         $pagination = $paginator->paginate(
             $articles,
             $request->query->get('page', 1),
-            $criteria->getPagination()->getItemsPerPage()
+            $criteria->getPagination()->getItemsPerPage(),
+            $options
         );
 
-        return new ResourcesListResponse($pagination);
+        $responseContext = new ResponseContext();
+        $responseContext->setSerializationGroups(
+            [
+                'Default',
+                'api_articles_list',
+                'api_articles_featuremedia',
+                'api_article_authors',
+                'api_article_media_list',
+                'api_article_media_renditions',
+                'api_image_details',
+                'api_routes_list',
+                'api_tenant_list',
+                'api_articles_statistics_list',
+            ]
+        );
+
+        return new ResourcesListResponse($pagination, $responseContext);
     }
 }

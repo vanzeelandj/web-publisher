@@ -17,23 +17,30 @@ declare(strict_types=1);
 namespace SWP\Bundle\CoreBundle\EventListener;
 
 use Doctrine\ORM\Event\LifecycleEventArgs;
-use OldSound\RabbitMqBundle\RabbitMq\ProducerInterface;
 use SWP\Bundle\ContentBundle\Model\ImageRenditionInterface;
+use SWP\Bundle\CoreBundle\MessageHandler\Message\ConvertImageMessage;
+use SWP\Component\Bridge\Events as PackageEvents;
 use SWP\Component\MultiTenancy\Context\TenantContextInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\GenericEvent;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 class ImageToWebpConversionListener
 {
-    protected $imageConversionProducer;
+    protected $messageBus;
 
     protected $tenantContext;
 
     protected $isWebpConversionEnabled;
 
-    public function __construct(ProducerInterface $imageConversionProducer, TenantContextInterface $tenantContext, string $isWebpConversionEnabled)
+    protected $eventDispatcher;
+
+    public function __construct(MessageBusInterface $messageBus, TenantContextInterface $tenantContext, string $isWebpConversionEnabled, EventDispatcherInterface $eventDispatcher)
     {
-        $this->imageConversionProducer = $imageConversionProducer;
+        $this->messageBus = $messageBus;
         $this->tenantContext = $tenantContext;
         $this->isWebpConversionEnabled = $isWebpConversionEnabled;
+        $this->eventDispatcher = $eventDispatcher;
     }
 
     public function postPersist(LifecycleEventArgs $args): void
@@ -43,9 +50,13 @@ class ImageToWebpConversionListener
             return;
         }
 
-        $this->imageConversionProducer->publish(serialize([
-            'image' => $rendition->getImage(),
-            'tenantId' => $this->tenantContext->getTenant()->getId(),
-        ]));
+        $tenantId = $this->tenantContext->getTenant()->getId();
+
+        $this->eventDispatcher->addListener(PackageEvents::PACKAGE_PROCESSED, function (GenericEvent $event) use ($rendition, $tenantId) {
+            $this->messageBus->dispatch(new ConvertImageMessage(
+                (int) $rendition->getImage()->getId(),
+                (int) $tenantId
+            ));
+        });
     }
 }

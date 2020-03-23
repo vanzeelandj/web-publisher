@@ -23,17 +23,13 @@ use Elastica\Query\MultiMatch;
 use Elastica\Query\Nested;
 use Elastica\Query\Range;
 use Elastica\Query\Term;
+use FOS\ElasticaBundle\Paginator\PaginatorAdapterInterface;
 use FOS\ElasticaBundle\Repository;
 use SWP\Bundle\ElasticSearchBundle\Criteria\Criteria;
 
 class PackageRepository extends Repository
 {
-    /**
-     * @param Criteria $criteria
-     *
-     * @return \FOS\ElasticaBundle\Paginator\PaginatorAdapterInterface
-     */
-    public function findByCriteria(Criteria $criteria)
+    public function findByCriteria(Criteria $criteria): PaginatorAdapterInterface
     {
         $fields = $criteria->getFilters()->getFields();
 
@@ -57,7 +53,7 @@ class PackageRepository extends Repository
             $boolFilter->addFilter(new Query\Terms('sources', $fields->get('sources')));
         }
 
-        if (null !== $fields->get('authors') && !empty($fields->get('authors'))) {
+        if ((null !== $fields->get('authors')) && !empty($fields->get('authors'))) {
             $bool = new BoolQuery();
             $bool->addFilter(new Query\Terms('authors.name', $fields->get('authors')));
             $nested = new Nested();
@@ -94,6 +90,10 @@ class PackageRepository extends Repository
 
         if (null !== $fields->get('routes') && !empty($fields->get('routes'))) {
             $bool->addFilter(new Query\Terms('articles.route.id', $fields->get('routes')));
+        }
+
+        if (null !== $fields->get('language') && '' !== $fields->get('language')) {
+            $boolFilter->addFilter(new Term(['language' => $fields->get('language')]));
         }
 
         if (!empty($bool->getParams())) {
