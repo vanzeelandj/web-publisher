@@ -5,32 +5,28 @@ declare(strict_types=1);
 /*
  * This file is part of the Superdesk Web Publisher User Bundle.
  *
- * Copyright 2016 Sourcefabric z.ú. and contributors.
+ * Copyright 2021 Sourcefabric z.ú. and contributors.
  *
  * For the full copyright and license information, please see the
  * AUTHORS and LICENSE files distributed with this source code.
  *
- * @copyright 2016 Sourcefabric z.ú
+ * @Copyright 2021 Sourcefabric z.ú
  * @license http://www.superdesk.org/license
  */
 
 namespace SWP\Bundle\UserBundle\Controller;
 
-use FOS\UserBundle\Model\UserManagerInterface;
-use Nelmio\ApiDocBundle\Annotation\Model;
-use Nelmio\ApiDocBundle\Annotation\Operation;
-use Swagger\Annotations as SWG;
 use SWP\Bundle\SettingsBundle\Context\ScopeContextInterface;
 use SWP\Bundle\SettingsBundle\Exception\InvalidScopeException;
 use SWP\Bundle\SettingsBundle\Form\Type\SettingType;
 use SWP\Bundle\SettingsBundle\Manager\SettingsManagerInterface;
 use SWP\Bundle\SettingsBundle\Model\SettingsInterface;
-use SWP\Bundle\UserBundle\Form\Type\UserRolesType;
+use SWP\Bundle\UserBundle\Form\UserRolesType;
 use SWP\Bundle\UserBundle\Model\UserInterface;
+use SWP\Bundle\UserBundle\Model\UserManagerInterface;
 use SWP\Component\Common\Response\ResponseContext;
 use SWP\Component\Common\Response\SingleResourceResponse;
 use SWP\Component\Common\Response\SingleResourceResponseInterface;
-use SWP\Component\Storage\Repository\RepositoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -47,53 +43,31 @@ class UserController extends AbstractController
 
     protected $formFactory;
 
-    protected $userRepository;
+    protected $userManager;
 
     public function __construct(
         SettingsManagerInterface $settingsManager,
         ScopeContextInterface $scopeContext,
         FormFactoryInterface $formFactory,
-        RepositoryInterface $userRepository
+        UserManagerInterface $userManager
     ) {
         $this->settingsManager = $settingsManager;
         $this->scopeContext = $scopeContext;
         $this->formFactory = $formFactory;
-        $this->userRepository = $userRepository;
+        $this->userManager = $userManager;
     }
 
     /**
-     * @Operation(
-     *     tags={"user"},
-     *     summary="Change user roles",
-     *     @SWG\Parameter(
-     *         name="body",
-     *         in="body",
-     *         @SWG\Schema(
-     *             ref=@Model(type=UserRolesType::class)
-     *         )
-     *     ),
-     *     @SWG\Response(
-     *         response="200",
-     *         description="Returned on success.",
-     *         @Model(type=\SWP\Bundle\CoreBundle\Model\User::class, groups={"api"})
-     *     ),
-     *     @SWG\Response(
-     *         response="404",
-     *         description="Returned on user not found."
-     *     ),
-     *     @SWG\Response(
-     *         response="403",
-     *         description="Returned when user don't have permissions to change roles"
-     *     )
-     * )
-     *
-     *
      * @Route("/api/{version}/users/{id}/promote", methods={"PATCH"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_user_promote_user")
      * @Route("/api/{version}/users/{id}/demote", methods={"PATCH"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_user_demote_user")
      */
-    public function modifyRoles(Request $request, $id, UserManagerInterface $userManager, AuthorizationCheckerInterface $authorizationChecker)
-    {
-        $requestedUser = $this->userRepository->find($id);
+    public function modifyRoles(
+        Request $request,
+        int $id,
+        UserManagerInterface $userManager,
+        AuthorizationCheckerInterface $authorizationChecker
+    ) {
+        $requestedUser = $this->userManager->find($id);
         if (!is_object($requestedUser) || !$requestedUser instanceof UserInterface) {
             throw new NotFoundHttpException('Requested user don\'t exists');
         }
@@ -123,20 +97,6 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Operation(
-     *     tags={"user"},
-     *     summary="Get user settings",
-     *     @SWG\Response(
-     *         response="200",
-     *         description="Returned on success.",
-     *         @Model(type=\SWP\Bundle\CoreBundle\Model\User::class, groups={"api"})
-     *     ),
-     *     @SWG\Response(
-     *         response="401",
-     *         description="Returned on user not found."
-     *     )
-     * )
-     *
      * @Route("/api/{version}/users/settings/", methods={"GET"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_user_get_settings")
      */
     public function listSettings(): SingleResourceResponseInterface
@@ -155,27 +115,6 @@ class UserController extends AbstractController
     }
 
     /**
-     * @Operation(
-     *     tags={"user"},
-     *     summary="Update user setting",
-     *     @SWG\Parameter(
-     *         name="body",
-     *         in="body",
-     *         @SWG\Schema(
-     *             ref=@Model(type=SettingType::class)
-     *         )
-     *     ),
-     *     @SWG\Response(
-     *         response="200",
-     *         description="Returned on success.",
-     *         @Model(type=\SWP\Bundle\CoreBundle\Model\Settings::class, groups={"api"})
-     *     ),
-     *     @SWG\Response(
-     *         response="404",
-     *         description="Setting not found"
-     *     )
-     * )
-     *
      * @Route("/api/{version}/users/settings/", methods={"PATCH"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_user_update_settings")
      */
     public function updateSettings(Request $request): SingleResourceResponseInterface

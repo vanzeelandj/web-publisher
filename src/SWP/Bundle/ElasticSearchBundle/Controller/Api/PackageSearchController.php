@@ -16,9 +16,7 @@ declare(strict_types=1);
 
 namespace SWP\Bundle\ElasticSearchBundle\Controller\Api;
 
-use Nelmio\ApiDocBundle\Annotation\Model;
-use Nelmio\ApiDocBundle\Annotation\Operation;
-use Swagger\Annotations as SWG;
+use FOS\ElasticaBundle\Manager\RepositoryManagerInterface;
 use SWP\Bundle\ElasticSearchBundle\Criteria\Criteria;
 use SWP\Bundle\MultiTenancyBundle\MultiTenancyEvents;
 use SWP\Component\Common\Response\ResourcesListResponse;
@@ -30,116 +28,9 @@ use Symfony\Component\Routing\Annotation\Route;
 class PackageSearchController extends Controller
 {
     /**
-     * @Operation(
-     *     tags={"package"},
-     *     summary="List all packages",
-     *     @SWG\Parameter(
-     *         name="status",
-     *         in="query",
-     *         description="Package status",
-     *         required=false,
-     *         type="array",
-     *         @SWG\Items(type="string")
-     *     ),
-     *     @SWG\Parameter(
-     *         name="published_before",
-     *         in="query",
-     *         description="The datetime before which the package has been published",
-     *         required=false,
-     *         type="string"
-     *     ),
-     *     @SWG\Parameter(
-     *         name="published_after",
-     *         in="query",
-     *         description="The datetime after which the package has been published",
-     *         required=false,
-     *         type="string"
-     *     ),
-     *     @SWG\Parameter(
-     *         name="author",
-     *         in="query",
-     *         description="Package authors",
-     *         required=false,
-     *         type="array",
-     *         @SWG\Items(type="string")
-     *     ),
-     *     @SWG\Parameter(
-     *         name="term",
-     *         in="query",
-     *         description="Search phrase",
-     *         required=false,
-     *         type="string"
-     *     ),
-     *     @SWG\Parameter(
-     *         name="sorting",
-     *         in="query",
-     *         description="List order",
-     *         required=false,
-     *         type="array",
-     *         @SWG\Items(type="string")
-     *     ),
-     *     @SWG\Parameter(
-     *         name="source",
-     *         in="query",
-     *         description="Sources",
-     *         required=false,
-     *         type="array",
-     *         @SWG\Items(type="string")
-     *     ),
-     *     @SWG\Parameter(
-     *         name="limit",
-     *         in="query",
-     *         description="Items per page",
-     *         required=false,
-     *         type="integer"
-     *     ),
-     *     @SWG\Parameter(
-     *         name="page",
-     *         in="query",
-     *         description="Page number",
-     *         required=false,
-     *         type="integer"
-     *     ),
-     *     @SWG\Parameter(
-     *         name="tenant",
-     *         in="query",
-     *         description="Tenant codes",
-     *         required=false,
-     *         type="array",
-     *         @SWG\Items(type="string")
-     *     ),
-     *     @SWG\Parameter(
-     *         name="language",
-     *         in="query",
-     *         description="Language code, e.g. en",
-     *         required=false,
-     *         type="string"
-     *     ),
-     *     @SWG\Parameter(
-     *         name="route",
-     *         in="query",
-     *         description="Routes ids",
-     *         required=false,
-     *         type="array",
-     *         @SWG\Items(type="integer")
-     *     ),
-     *     @SWG\Response(
-     *         response="200",
-     *         description="Returned on success.",
-     *         @SWG\Schema(
-     *             type="array",
-     *             @SWG\Items(ref=@Model(type=\SWP\Bundle\CoreBundle\Model\Package::class, groups={"api"}))
-     *         )
-     *     ),
-     *     @SWG\Response(
-     *         response="500",
-     *         description="Returned when unexpected error."
-     *     )
-     * )
-     *
      * @Route("/api/{version}/packages/", methods={"GET"}, options={"expose"=true}, defaults={"version"="v2"}, name="swp_api_core_list_packages")
      */
-    public function searchAction(Request $request)
+    public function searchAction(Request $request, RepositoryManagerInterface $repositoryManager)
     {
         $this->get('event_dispatcher')->dispatch(MultiTenancyEvents::TENANTABLE_DISABLE);
         $currentTenant = $this->get('swp_multi_tenancy.tenant_context')->getTenant();
@@ -162,7 +53,7 @@ class PackageSearchController extends Controller
             ]
         );
 
-        $result = $this->get('fos_elastica.manager')
+        $result = $repositoryManager
             ->getRepository($this->getParameter('swp.model.package.class'))
             ->findByCriteria($criteria);
 
@@ -176,6 +67,7 @@ class PackageSearchController extends Controller
         $responseContext->setSerializationGroups(
             [
                 'Default',
+                'api',
                 'api_packages_list',
                 'api_packages_items_list',
                 'api_tenant_list',

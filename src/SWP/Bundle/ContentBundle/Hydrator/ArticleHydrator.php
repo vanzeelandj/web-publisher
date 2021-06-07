@@ -17,9 +17,10 @@ declare(strict_types=1);
 namespace SWP\Bundle\ContentBundle\Hydrator;
 
 use function count;
+use SWP\Bundle\ContentBundle\Factory\MetadataFactoryInterface;
+use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Bundle\ContentBundle\Service\ArticleKeywordAdderInterface;
 use SWP\Bundle\ContentBundle\Service\ArticleSourcesAdderInterface;
-use SWP\Bundle\ContentBundle\Model\ArticleInterface;
 use SWP\Component\Bridge\Model\PackageInterface;
 
 final class ArticleHydrator implements ArticleHydratorInterface
@@ -34,10 +35,17 @@ final class ArticleHydrator implements ArticleHydratorInterface
      */
     private $articleKeywordAdder;
 
-    public function __construct(ArticleSourcesAdderInterface $articleSourcesAdder, ArticleKeywordAdderInterface $articleKeywordAdder)
-    {
+    /** @var MetadataFactoryInterface */
+    private $metadataFactory;
+
+    public function __construct(
+        ArticleSourcesAdderInterface $articleSourcesAdder,
+        ArticleKeywordAdderInterface $articleKeywordAdder,
+        MetadataFactoryInterface $metadataFactory
+    ) {
         $this->articleSourcesAdder = $articleSourcesAdder;
         $this->articleKeywordAdder = $articleKeywordAdder;
+        $this->metadataFactory = $metadataFactory;
     }
 
     public function hydrate(ArticleInterface $article, PackageInterface $package): ArticleInterface
@@ -56,13 +64,14 @@ final class ArticleHydrator implements ArticleHydratorInterface
 
         $article->setTitle($package->getHeadline());
         $article->setAuthors($package->getAuthors());
-        $article->setExtra($package->getExtra());
+        $article->setExtraFields($package->getExtra());
 
         $this->populateSources($article, $package);
         $this->populateKeywords($article, $package);
 
         $article->setLocale($package->getLanguage());
         $article->setLead($package->getDescription());
+        $article->setData($this->metadataFactory->createFrom($package->getMetadata()));
         $article->setMetadata($package->getMetadata());
 
         return $article;

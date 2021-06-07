@@ -16,10 +16,12 @@ services:
 
   SWP\Bundle\CoreBundle\Controller\PackageSeoMediaUploadController: ~
   SWP\Bundle\CoreBundle\Controller\RedirectingController: ~
-  SWP\Bundle\CoreBundle\Controller\SettingsController: ~
+  SWP\Bundle\SettingsBundle\Controller\SettingsController: ~
   SWP\Bundle\CoreBundle\Controller\ExternalOauthController: ~
   SWP\Bundle\CoreBundle\Controller\ContentListItemController: ~
   SWP\Bundle\CoreBundle\Controller\FailedQueueController: ~
+  SWP\Bundle\CoreBundle\Controller\StaticThemeAssetsController: ~
+  SWP\Bundle\CoreBundle\Controller\ThemesController: ~
 
   takeit_amp_html.amp_controller:
     class: SWP\Bundle\CoreBundle\Controller\AmpController

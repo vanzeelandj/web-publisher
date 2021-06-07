@@ -14,7 +14,9 @@ services:
         ports:
             - 11211:11211
     elasticsearch:
-        image: elasticsearch:5.6
+        image: elasticsearch:7.10.1
+        environment:
+            - discovery.type=single-node
         ports:
             - 9201:9200
             - 9301:9300
@@ -51,6 +53,15 @@ services:
         ports:
             - "8081:8080"
             - "5555:5555"
+    test-api:
+        image: node:10-alpine
+        ports:
+            - "3000:3000"
+        volumes:
+            - ../../src/SWP/Bundle/CoreBundle/Tests/Functional/Resources:/app:rw
+        working_dir: /app
+        command: sh -c "npm install json-server && nohup node server.js"
+
 volumes:
     publisher_logs:
         driver: local

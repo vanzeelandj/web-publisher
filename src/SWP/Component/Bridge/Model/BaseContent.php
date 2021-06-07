@@ -20,6 +20,8 @@ class BaseContent implements ContentInterface
 {
     use AuthorsAwareTrait;
 
+    private const PHOTO_LICENSE = 'photo_license';
+
     /**
      * @var mixed
      */
@@ -144,6 +146,9 @@ class BaseContent implements ContentInterface
      * @var string|null
      */
     protected $copyrightHolder;
+
+    /** @var string|null */
+    protected $profile;
 
     public function __construct()
     {
@@ -425,6 +430,17 @@ class BaseContent implements ContentInterface
         }, $values);
     }
 
+    public function getLicense(): ?License
+    {
+        foreach ($this->subjects as $subject) {
+            if (\is_array($subject) && \array_key_exists('scheme', $subject) && self::PHOTO_LICENSE === $subject['scheme']) {
+                return new License($subject['name'], $subject['code']);
+            }
+        }
+
+        return null;
+    }
+
     /**
      * {@inheritdoc}
      */
@@ -499,6 +515,7 @@ class BaseContent implements ContentInterface
             'edNote' => $this->getEdNote(),
             'genre' => $this->getGenre(),
             'language' => $this->getLanguage(),
+            'profile' => $this->getProfile(),
         ];
     }
 
@@ -614,5 +631,15 @@ class BaseContent implements ContentInterface
     public function setCopyrightHolder(?string $copyrightHolder): void
     {
         $this->copyrightHolder = $copyrightHolder;
+    }
+
+    public function getProfile(): ?string
+    {
+        return $this->profile;
+    }
+
+    public function setProfile(?string $profile): void
+    {
+        $this->profile = $profile;
     }
 }

@@ -18,6 +18,7 @@ namespace SWP\Bundle\CoreBundle\EventListener;
 
 use Doctrine\Common\Persistence\ObjectManager;
 use FOS\ElasticaBundle\Persister\ObjectPersisterInterface;
+use FOS\ElasticaBundle\Persister\PersisterRegistry;
 use SWP\Bundle\ContentBundle\ArticleEvents;
 use SWP\Bundle\ContentBundle\Doctrine\ArticleRepositoryInterface;
 use SWP\Bundle\ContentBundle\Event\ArticleEvent;
@@ -39,26 +40,26 @@ final class UpdatedPackageListener
 
     private $eventDispatcher;
 
-    private $elasticaObjectPersister;
+    private $persisterRegistry;
 
     public function __construct(
         ArticleHydratorInterface $articleHydrator,
         ObjectManager $articleManager,
         ArticleRepositoryInterface $articleRepository,
         EventDispatcherInterface $eventDispatcher,
-        ObjectPersisterInterface $elasticaObjectPersister
+        PersisterRegistry $persisterRegistry
     ) {
         $this->articleHydrator = $articleHydrator;
         $this->articleManager = $articleManager;
         $this->articleRepository = $articleRepository;
         $this->eventDispatcher = $eventDispatcher;
-        $this->elasticaObjectPersister = $elasticaObjectPersister;
+        $this->persisterRegistry = $persisterRegistry;
     }
 
     public function onUpdated(GenericEvent $event): void
     {
         $package = $this->getPackage($event);
-        $this->elasticaObjectPersister->replaceOne($package);
+        $this->persisterRegistry->getPersister('swp_package')->replaceOne($package);
 
         if (ContentInterface::STATUS_USABLE === $package->getPubStatus()) {
             $this->handleArticlesUpdate($package);
@@ -75,7 +76,14 @@ final class UpdatedPackageListener
     private function handleArticlesUpdate(PackageInterface $package)
     {
         $this->eventDispatcher->dispatch(MultiTenancyEvents::TENANTABLE_DISABLE);
-        foreach ($this->articleRepository->getArticlesByPackage($package)->getQuery()->getResult() as $article) {
+        $articles = $this->articleRepository
+            ->getArticlesByPackage($package)
+            ->getQuery()
+            ->getResult();
+
+        $this->clearMetadata($articles);
+
+        foreach ($articles as $article) {
             $article = $this->articleHydrator->hydrate($article, $package);
             $this->eventDispatcher->dispatch(ArticleEvents::PRE_UPDATE, new ArticleEvent($article, $package, ArticleEvents::PRE_UPDATE));
             // Flush in loop to emit POST_UPDATE article event
@@ -116,5 +124,17 @@ final class UpdatedPackageListener
         }
 
         return $package;
+    }
+
+    private function clearMetadata(array $articles): void
+    {
+        foreach ($articles as $article) {
+            if (null !== $article->getData()) {
+                $this->articleManager->remove($article->getData());
+                $article->setData(null);
+            }
+        }
+
+        $this->articleManager->flush();
     }
 }

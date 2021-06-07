@@ -17,11 +17,11 @@ namespace SWP\Bundle\CoreBundle\Controller;
 use Hoa\File\Read;
 use Hoa\Mime\Mime;
 use Sylius\Bundle\ThemeBundle\HierarchyProvider\ThemeHierarchyProviderInterface;
-use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Bundle\FrameworkBundle\Controller\Controller;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Routing\Annotation\Route;
 
 class StaticThemeAssetsController extends Controller
 {
@@ -35,9 +35,9 @@ class StaticThemeAssetsController extends Controller
      * @Route("/public-{fileName}.{fileExtension}", methods={"GET"}, name="static_theme_assets_root_public", requirements={"fileName"=".+"})
      * @Route("/public/{fileName}.{fileExtension}", methods={"GET"}, name="static_theme_assets_public", requirements={"fileName"=".+"})
      */
-    public function rootAction($fileName, $fileExtension)
+    public function rootAction($fileName, $fileExtension, ThemeHierarchyProviderInterface $themeHierarchyProvider)
     {
-        $themes = $this->get(ThemeHierarchyProviderInterface::class)->getThemeHierarchy(
+        $themes = $themeHierarchyProvider->getThemeHierarchy(
             $this->get('swp_core.theme.context.tenant_aware')->getTheme()
         );
 
@@ -108,8 +108,6 @@ class StaticThemeAssetsController extends Controller
     }
 
     /**
-     * @param string $themeName
-     *
      * @return mixed
      */
     private function loadOrganizationTheme(string $themeName)
@@ -120,8 +118,6 @@ class StaticThemeAssetsController extends Controller
     }
 
     /**
-     * @param string $themeName
-     *
      * @return mixed
      */
     private function loadTenantTheme(string $themeName)
@@ -132,8 +128,7 @@ class StaticThemeAssetsController extends Controller
     }
 
     /**
-     * @param array  $loadedThemes
-     * @param string $themeName
+     * @param array $loadedThemes
      *
      * @return mixed
      */

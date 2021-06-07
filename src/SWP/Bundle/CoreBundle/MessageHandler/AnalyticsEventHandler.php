@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace SWP\Bundle\CoreBundle\MessageHandler;
 
 use Doctrine\Common\Persistence\ObjectManager;
+use FOS\ElasticaBundle\Persister\PersisterRegistry;
 use SWP\Bundle\AnalyticsBundle\Messenger\AnalyticsEvent;
 use SWP\Bundle\AnalyticsBundle\Model\ArticleEventInterface;
 use SWP\Bundle\AnalyticsBundle\Services\ArticleStatisticsServiceInterface;
@@ -27,16 +28,20 @@ class AnalyticsEventHandler implements MessageHandlerInterface
     /** @var ObjectManager */
     private $articleStatisticsObjectManager;
 
+    private PersisterRegistry $persisterRegistry;
+
     public function __construct(
         ArticleStatisticsServiceInterface $articleStatisticsService,
         TenantResolver $tenantResolver,
         TenantContextInterface $tenantContext,
-        ObjectManager $articleStatisticsObjectManager
+        ObjectManager $articleStatisticsObjectManager,
+        PersisterRegistry $persisterRegistry
     ) {
         $this->articleStatisticsService = $articleStatisticsService;
         $this->tenantResolver = $tenantResolver;
         $this->tenantContext = $tenantContext;
         $this->articleStatisticsObjectManager = $articleStatisticsObjectManager;
+        $this->persisterRegistry = $persisterRegistry;
     }
 
     public function __invoke(AnalyticsEvent $analyticsEvent)
@@ -53,10 +58,13 @@ class AnalyticsEventHandler implements MessageHandlerInterface
             $articleStatistics = $this->articleStatisticsService->addArticleEvent($articleId, ArticleEventInterface::ACTION_PAGEVIEW, [
                 'pageViewSource' => $this->getPageViewSource($pageViewReferrer),
             ]);
-
             $query = $this->articleStatisticsObjectManager->createQuery('UPDATE '.ArticleStatistics::class.' s SET s.pageViewsNumber = s.pageViewsNumber + 1 WHERE s.id = :id');
             $query->setParameter('id', $articleStatistics->getId());
             $query->execute();
+
+            $this->articleStatisticsObjectManager->clear();
+
+            $this->persisterRegistry->getPersister('swp_article')->replaceOne($articleStatistics->getArticle());
         }
     }
 

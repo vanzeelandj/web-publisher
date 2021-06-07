@@ -46,6 +46,8 @@ class Tenant extends BaseTenant implements TenantInterface, ArticlesCountInterfa
     /** @var AppleNewsConfig|null */
     protected $appleNewsConfig;
 
+    protected ?PWAConfig $pwaConfig = null;
+
     /**
      * {@inheritdoc}
      */
@@ -121,7 +123,26 @@ class Tenant extends BaseTenant implements TenantInterface, ArticlesCountInterfa
 
     public function setAppleNewsConfig(?AppleNewsConfig $appleNewsConfig): void
     {
-        $appleNewsConfig->setTenant($this);
+        if ($appleNewsConfig instanceof AppleNewsConfig) {
+            $appleNewsConfig->setTenant($this);
+        }
+
         $this->appleNewsConfig = $appleNewsConfig;
+    }
+
+    /**
+     * @return PWAConfig
+     */
+    public function getPwaConfig(): ?PWAConfig
+    {
+        return $this->pwaConfig;
+    }
+
+    /**
+     * @param PWAConfig $pwaConfig
+     */
+    public function setPwaConfig(?PWAConfig $pwaConfig): void
+    {
+        $this->pwaConfig = $pwaConfig;
     }
 }
